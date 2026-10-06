@@ -77,9 +77,13 @@ namespace Orbiters.Logger.Editor
             root.Add(Header("Sources", "Where logs come from: the package or folder of the code that logged them."));
             var search = new TextField();
             search.AddToClassList("lg-popup__search");
+            var placeholder = LoggerUi.Text("Find a source", "lg-popup__placeholder");
+            placeholder.pickingMode = PickingMode.Ignore;
+            search.Add(placeholder);
             search.RegisterValueChangedCallback(evt =>
             {
                 filter = evt.newValue ?? string.Empty;
+                placeholder.style.display = filter.Length == 0 ? DisplayStyle.Flex : DisplayStyle.None;
                 Fill();
             });
             root.Add(search);

@@ -2032,6 +2032,7 @@
     flex-grow: 1;
     flex-shrink: 1;
     min-width: 0;
+    -unity-text-align: middle-left;
     color: #e8e8e8;
     white-space: nowrap;
     overflow: hidden;
@@ -2258,4 +2259,19 @@
 
 .lg-root .unity-scroller .unity-base-slider__dragger:hover {
     background-color: rgba(255, 255, 255, 0.28);
+}
+
+.lg-popup__scroll .unity-scroller--horizontal,
+.lg-details__scroll .unity-scroller--horizontal {
+    display: none;
+}
+
+.lg-popup__placeholder {
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    color: #6f6f6f;
+    font-size: 12px;
+    -unity-text-align: middle-left;
 }

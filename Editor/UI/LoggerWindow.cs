@@ -50,6 +50,7 @@ namespace Orbiters.Logger.Editor
         private bool detailsDirty = true;
         private int newRows;
         private bool built;
+        private bool visible = true;
 
         internal static bool IsOpen => openWindows > 0;
 
@@ -73,6 +74,15 @@ namespace Orbiters.Logger.Editor
             minSize = new Vector2(520f, 300f);
             AssemblyReloadEvents.beforeAssemblyReload += runner.Cancel;
         }
+
+        // A docked tab behind another one does no work; it catches up when shown again.
+        private void OnBecameVisible()
+        {
+            visible = true;
+            QueueRefilter();
+        }
+
+        private void OnBecameInvisible() => visible = false;
 
         private void OnDisable()
         {
@@ -295,7 +305,7 @@ namespace Orbiters.Logger.Editor
         private void TickCore()
         {
             var store = Store;
-            if (store == null || !built)
+            if (store == null || !built || !visible)
             {
                 return;
             }
@@ -329,9 +339,9 @@ namespace Orbiters.Logger.Editor
             }
             else if (!runner.Busy && timeline != null && timeline.resolvedStyle.display != DisplayStyle.None)
             {
-                // The chart keeps up with time: every second while logs arrive, every ten seconds otherwise.
+                // The chart keeps up with time: every 3 seconds while logs arrive, every 15 seconds otherwise.
                 double age = now - lastFullPass;
-                if (age > 1d && store.Version != fullPassVersion || age > 10d)
+                if (age > 3d && store.Version != fullPassVersion || age > 15d)
                 {
                     Refilter(allowAsync: true);
                 }
