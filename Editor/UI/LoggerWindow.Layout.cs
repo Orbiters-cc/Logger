@@ -57,12 +57,17 @@ namespace Orbiters.Logger.Editor
                 return;
             }
 
-            bool side = width >= 900f && width > height * 2.2f;
-            if (side != sideBySide)
+            // Decided from the window, which the panes can't change, with some slack so a resize near the limit (or a
+            // transient layout pass, such as when a menu opens) doesn't flip the panes back and forth.
+            var window = rootVisualElement.layout;
+            if (!float.IsNaN(window.width) && window.width > 0 && window.height > 0)
             {
+                float ratio = window.width / window.height;
+                bool side = sideBySide ? window.width >= 860f && ratio > 1.9f : window.width >= 900f && ratio > 2.1f;
                 sideBySide = side;
-                body.EnableInClassList("lg-body--side", side);
             }
+
+            body.EnableInClassList("lg-body--side", sideBySide);
 
             detailsPane.EnableInClassList("lg-details--collapsed", detailsCollapsed);
             if (sideBySide)
