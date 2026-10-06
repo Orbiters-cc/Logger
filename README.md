@@ -1,6 +1,6 @@
 # Logger
 
-## Unreleased
+## 0.1.1 — 2026-10-07
 
 - With Unit Git in the project, the timeline shows its commits (blue) and releases (gold) inside the logged time;
   hover lists them. Other tools can add markers with `TimelineMarkers.Set`.
