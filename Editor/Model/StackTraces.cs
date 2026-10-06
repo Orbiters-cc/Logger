@@ -180,6 +180,16 @@ namespace Orbiters.Logger.Editor
 
         public static bool IsLogging(string method)
         {
+            // Harmony and other patchers wrap Debug.Log: "(wrapper dynamic-method) UnityEngine.Debug:UnityEngine.Debug.LogError_Patch1 (object)".
+            if (method.StartsWith("(wrapper ", StringComparison.Ordinal))
+            {
+                int close = method.IndexOf(") ", StringComparison.Ordinal);
+                if (close > 0)
+                {
+                    method = method.Substring(close + 2);
+                }
+            }
+
             foreach (string prefix in LoggingPrefixes)
             {
                 if (method.StartsWith(prefix, StringComparison.Ordinal))

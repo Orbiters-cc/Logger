@@ -422,8 +422,11 @@ namespace Orbiters.Logger.Editor
             field.AddToClassList("lg-search__field");
             Add(field);
             Add(icon);
-            placeholder = new Label("Search logs   Ctrl+F") { pickingMode = PickingMode.Ignore };
+            placeholder = new Label("Search logs") { pickingMode = PickingMode.Ignore };
             placeholder.AddToClassList("lg-search__placeholder");
+            var hint = new Label("Ctrl+F") { pickingMode = PickingMode.Ignore };
+            hint.AddToClassList("lg-search__hint");
+            placeholder.Add(hint);
             Add(placeholder);
 
             var options = LoggerUi.Box("lg-search__options");

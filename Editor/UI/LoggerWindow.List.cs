@@ -23,6 +23,7 @@ namespace Orbiters.Logger.Editor
         private VisualElement listPane;
         private VirtualList list;
         private Label listSummary;
+        private VisualElement rangeChip;
         private Button sortButton;
         private Button mutedChip;
         private Button newLogsPill;
@@ -53,6 +54,12 @@ namespace Orbiters.Logger.Editor
             var header = LoggerUi.Box("lg-list-header");
             listSummary = LoggerUi.Text(string.Empty, "lg-list-header__summary");
             header.Add(listSummary);
+            rangeChip = LoggerUi.Box("lg-range");
+            rangeChip.Add(new LoggerIcon(LoggerGlyph.Clock));
+            rangeChip.Add(LoggerUi.Text(string.Empty, "lg-range__label"));
+            rangeChip.Add(LoggerUi.Icon(LoggerGlyph.Close, "Show the whole session (Escape, or double-click the chart)", () => SetRange(0, 0), "lg-range__clear"));
+            rangeChip.style.display = DisplayStyle.None;
+            header.Add(rangeChip);
             header.Add(LoggerUi.Spacer());
             mutedChip = new Button { tooltip = "Messages you hid. Click to show them again." };
             mutedChip.AddToClassList("lg-chip-button");
@@ -220,6 +227,8 @@ namespace Orbiters.Logger.Editor
             }
 
             LoggerUi.Show(parts.Context, !grouped && store.TryGetContext(occurrence, out _));
+            // Rows are recycled between modes: a sparkline shown in Groups must not stay on a List row.
+            LoggerUi.Show(parts.Spark, false);
             if (grouped)
             {
                 int count = state.GroupCount[key];
@@ -282,7 +291,15 @@ namespace Orbiters.Logger.Editor
             }
             else
             {
-                listSummary.text = state == null ? string.Empty : LoggerUi.Plural(count, "log") + (rangeTo > 0 ? " in the selected time range" : string.Empty);
+                listSummary.text = state == null ? string.Empty : LoggerUi.Plural(count, "log");
+            }
+
+            bool ranged = rangeTo > rangeFrom && rangeTo > 0;
+            rangeChip.style.display = ranged ? DisplayStyle.Flex : DisplayStyle.None;
+            if (ranged)
+            {
+                ((Label)rangeChip[1]).text = LoggerUi.Time(rangeFrom, false) + " – " + LoggerUi.Time(rangeTo, false) + "  ·  " +
+                                             LoggerUi.Duration(TimeSpan.FromTicks(rangeTo - rangeFrom)).Trim();
             }
 
             sortButton.style.display = grouped ? DisplayStyle.Flex : DisplayStyle.None;

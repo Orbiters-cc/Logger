@@ -289,8 +289,6 @@ namespace Orbiters.Logger.Editor
         private readonly Label startLabel;
         private readonly Label middleLabel;
         private readonly Label endLabel;
-        private readonly VisualElement rangeChip;
-        private readonly Label rangeLabel;
         private readonly Label tip;
         private readonly Label emptyLabel;
         private FilterState state;
@@ -324,15 +322,6 @@ namespace Orbiters.Logger.Editor
             axis.Add(middleLabel);
             axis.Add(endLabel);
             Add(axis);
-
-            rangeChip = LoggerUi.Box("lg-timeline__range");
-            var clock = new LoggerIcon(LoggerGlyph.Clock);
-            rangeChip.Add(clock);
-            rangeLabel = LoggerUi.Text(string.Empty, "lg-timeline__range-label");
-            rangeChip.Add(rangeLabel);
-            rangeChip.Add(LoggerUi.Icon(LoggerGlyph.Close, "Show the whole session (double-click the chart)", () => RangeSelected?.Invoke(0, 0), "lg-timeline__range-clear"));
-            rangeChip.style.display = DisplayStyle.None;
-            Add(rangeChip);
 
             tip = LoggerUi.Text(string.Empty, "lg-chart-tip");
             tip.pickingMode = PickingMode.Ignore;
@@ -377,13 +366,6 @@ namespace Orbiters.Logger.Editor
             else
             {
                 startLabel.text = middleLabel.text = endLabel.text = string.Empty;
-            }
-
-            bool ranged = to > from && to > 0;
-            rangeChip.style.display = ranged ? DisplayStyle.Flex : DisplayStyle.None;
-            if (ranged)
-            {
-                rangeLabel.text = LoggerUi.Time(from, false) + " – " + LoggerUi.Time(to, false) + "  ·  " + LoggerUi.Duration(TimeSpan.FromTicks(to - from)).Trim();
             }
 
             if (hover >= 0)

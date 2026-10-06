@@ -33,7 +33,7 @@ namespace Orbiters.Logger.Editor
         [SerializeField] private List<string> muted = new List<string>();
         [SerializeField] private long rangeFrom;
         [SerializeField] private long rangeTo;
-        [SerializeField] private float detailsHeight = 300f;
+        [SerializeField] private float detailsPaneHeight = 320f;
 
         private readonly FilterRunner runner = new FilterRunner();
         private LogStore boundStore;
@@ -116,25 +116,15 @@ namespace Orbiters.Logger.Editor
 
             rootVisualElement.EnableInClassList("lg-root--compact", Compact);
             rootVisualElement.EnableInClassList("lg-root--mono", EditorPrefs.GetBool(MonospacePref, false));
-            rootVisualElement.Add(BuildTopBar());
+            topBar = BuildTopBar();
+            rootVisualElement.Add(topBar);
+            searchRow = LoggerUi.Box("lg-searchrow");
+            searchRow.style.display = DisplayStyle.None;
+            rootVisualElement.Add(searchRow);
             rootVisualElement.Add(BuildTimeline());
-
-            var split = new TwoPaneSplitView(1, Mathf.Clamp(detailsHeight, 120f, 900f), TwoPaneSplitViewOrientation.Vertical);
-            split.AddToClassList("lg-split");
-            split.viewDataKey = "orbiters-logger-split";
-            split.Add(BuildListPane());
-            split.Add(BuildDetailsPane());
-            rootVisualElement.Add(split);
-            split.RegisterCallback<GeometryChangedEvent>(_ =>
-            {
-                var fixedPane = split.fixedPane;
-                if (fixedPane != null && !float.IsNaN(fixedPane.layout.height) && fixedPane.layout.height > 60f)
-                {
-                    detailsHeight = fixedPane.layout.height;
-                }
-            });
-
+            rootVisualElement.Add(BuildBody());
             rootVisualElement.Add(BuildFooter());
+            rootVisualElement.RegisterCallback<GeometryChangedEvent>(_ => ApplyLayout());
             toasts = new Toasts();
             rootVisualElement.Add(toasts);
             rootVisualElement.RegisterCallback<KeyDownEvent>(OnKeyDown, TrickleDown.TrickleDown);

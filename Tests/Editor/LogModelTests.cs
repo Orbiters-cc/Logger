@@ -63,6 +63,8 @@ namespace Orbiters.Logger.Editor.Tests
             Assert.AreEqual("VersionActions.Infer", StackTraces.ShortMethod(frames[callsite].Method));
             Assert.AreEqual(3214, frames[callsite].Line);
             Assert.AreEqual("Packages/orbiters.mcb/Editor/Features/VersionActions.cs", StackTraces.NormalizePath(frames[callsite].File));
+            var patched = StackTraces.ParseFrame("(wrapper dynamic-method) UnityEngine.Debug:UnityEngine.Debug.LogError_Patch1 (object)");
+            Assert.AreEqual(StackFrameKind.Logging, patched.Kind, "a Harmony-patched Debug.LogError is still logging");
         }
 
         [Test]

@@ -463,9 +463,28 @@
     left: 31px;
     top: 0;
     bottom: 0;
+    flex-direction: row;
+    align-items: center;
     color: #767676;
     font-size: 12px;
     -unity-text-align: middle-left;
+}
+
+.lg-search__hint {
+    position: absolute;
+    left: 78px;
+    height: 18px;
+    padding: 0 6px;
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #6c6c6c;
+    font-size: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.lg-root--s .lg-search__hint {
+    display: none;
 }
 
 .lg-search__options {
@@ -747,44 +766,42 @@
     -unity-text-align: middle-center;
 }
 
-.lg-timeline__range {
-    position: absolute;
-    top: 12px;
-    right: 18px;
-    height: 24px;
-    padding: 0 2px 0 8px;
+.lg-range {
+    height: 22px;
+    margin-left: 10px;
+    padding: 0 1px 0 8px;
     flex-direction: row;
     align-items: center;
-    border-radius: 12px;
-    background-color: rgba(18, 38, 27, 0.92);
+    border-radius: 11px;
+    background-color: rgba(0, 218, 109, 0.12);
     border-width: 1px;
-    border-color: rgba(0, 218, 109, 0.45);
+    border-color: rgba(0, 218, 109, 0.35);
 }
 
-.lg-timeline__range .lg-icon {
-    width: 13px;
-    height: 13px;
+.lg-range .lg-icon {
+    width: 12px;
+    height: 12px;
     margin-right: 6px;
     --icon-color: #3cf29a;
 }
 
-.lg-timeline__range-label {
+.lg-range__label {
     color: #c8f5dc;
     font-size: 11px;
     -unity-font-style: bold;
 }
 
-.lg-timeline__range-clear {
-    width: 20px;
-    height: 20px;
-    min-width: 20px;
-    margin-left: 4px;
-    border-radius: 10px;
+.lg-range__clear {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    margin: 0 1px 0 4px;
+    border-radius: 9px;
 }
 
-.lg-timeline__range-clear .lg-icon {
-    width: 11px;
-    height: 11px;
+.lg-range__clear .lg-icon {
+    width: 10px;
+    height: 10px;
     margin: 0;
     --icon-color: #9adbb8;
 }
@@ -802,26 +819,107 @@
     white-space: nowrap;
 }
 
-/* ---- Split, list ------------------------------------------------------------------------------------ */
+/* ---- Body: list and details, stacked or side by side ------------------------------------------------ */
 
-.lg-split {
+.lg-body {
     flex-grow: 1;
     min-height: 0;
+    flex-direction: column;
 }
 
-.lg-split > .unity-two-pane-split-view__dragline-anchor {
+.lg-body--side {
+    flex-direction: row;
+}
+
+.lg-split-handle {
+    height: 7px;
+    margin: -3px 0;
+    flex-shrink: 0;
+    justify-content: center;
+    cursor: resize-vertical;
+}
+
+.lg-split-handle__line {
     height: 1px;
     background-color: var(--lg-line-strong);
+    transition-property: background-color;
+    transition-duration: 0.12s;
 }
 
-.lg-split > .unity-two-pane-split-view__dragline-anchor:hover {
-    background-color: rgba(0, 218, 109, 0.6);
+.lg-split-handle:hover .lg-split-handle__line,
+.lg-split-handle--active .lg-split-handle__line {
+    height: 2px;
+    background-color: rgba(0, 218, 109, 0.65);
+}
+
+.lg-body--side .lg-split-handle {
+    width: 7px;
+    height: auto;
+    margin: 0 -3px;
+    flex-direction: row;
+    cursor: resize-horizontal;
+}
+
+.lg-body--side .lg-split-handle__line {
+    width: 1px;
+    height: 100%;
+}
+
+.lg-body--side .lg-split-handle:hover .lg-split-handle__line,
+.lg-body--side .lg-split-handle--active .lg-split-handle__line {
+    width: 2px;
+    height: 100%;
 }
 
 .lg-list-pane {
     flex-grow: 1;
-    min-height: 60px;
+    flex-basis: 0;
+    min-height: 110px;
+    min-width: 0;
     background-color: var(--lg-bg);
+}
+
+/* ---- Responsive toolbar ----------------------------------------------------------------------------- */
+
+.lg-root--m .lg-brand__name {
+    display: none;
+}
+
+.lg-root--m .lg-brand {
+    margin-right: 8px;
+}
+
+.lg-root--s .lg-tool-button__label,
+.lg-root--s .lg-segmented__label {
+    display: none;
+}
+
+.lg-root--s .lg-tool-button .lg-icon,
+.lg-root--s .lg-segmented__option .lg-icon {
+    margin-right: 0;
+}
+
+.lg-root--s .lg-segmented__option {
+    padding: 0 8px;
+}
+
+.lg-searchrow {
+    flex-shrink: 0;
+    padding: 6px 10px 7px 10px;
+    background-color: var(--lg-bar);
+    border-bottom-width: 1px;
+    border-bottom-color: var(--lg-line);
+}
+
+.lg-searchrow .lg-search {
+    max-width: none;
+    margin: 0;
+}
+
+.lg-root--short .lg-timeline {
+    height: 54px;
+    min-height: 54px;
+    padding-top: 5px;
 }
 
 .lg-list-header {
@@ -972,7 +1070,7 @@
 }
 
 .lg-row--cursor.lg-row--selected {
-    background-color: var(--lg-select-strong);
+    background-color: rgba(0, 218, 109, 0.17);
 }
 
 .lg-row__edge {
@@ -1243,9 +1341,18 @@
 /* ---- Details ---------------------------------------------------------------------------------------- */
 
 .lg-details {
-    flex-grow: 1;
-    min-height: 80px;
+    flex-shrink: 0;
+    overflow: hidden;
     background-color: var(--lg-surface);
+}
+
+.lg-details--collapsed {
+    display: none;
+}
+
+.lg-body--side .lg-details__main,
+.lg-body--side .lg-details__side {
+    margin-right: 0;
 }
 
 .lg-details__header {

@@ -40,10 +40,13 @@ namespace Orbiters.Logger.Editor
             pendingStart = 0;
         }
 
-        /// <summary>Remembers a log received live, to match it with its console row.</summary>
-        public void Track(int occurrence, string condition, LogLevel level, long time)
+        /// <summary>
+        /// Remembers a log received live, to match it with its console row. It waits from when it was filed, not when
+        /// it was logged: after the editor was busy for minutes, queued logs are old but their rows are still to come.
+        /// </summary>
+        public void Track(int occurrence, string condition, LogLevel level)
         {
-            pending.Add(new Pending { Occurrence = occurrence, Condition = condition ?? string.Empty, Level = level, Time = time });
+            pending.Add(new Pending { Occurrence = occurrence, Condition = condition ?? string.Empty, Level = level, Time = DateTime.UtcNow.Ticks });
             if (pending.Count - pendingStart > MaxPending)
             {
                 pendingStart += MaxPending / 4;

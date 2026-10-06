@@ -191,7 +191,12 @@ namespace Orbiters.Logger.Editor
                     lastVersion = -1;
                 }
 
-                mirror.Tick(Store, Now, 2d, OnCompileRow);
+                // Console rows are only matched once every queued log is filed: a row whose log still waits in the
+                // queue would look like one the Logger never received.
+                if (queue.IsEmpty)
+                {
+                    mirror.Tick(Store, Now, 2d, OnCompileRow);
+                }
                 if (Store.Version != lastVersion || history != null)
                 {
                     lastVersion = Store.Version;
@@ -248,7 +253,7 @@ namespace Orbiters.Logger.Editor
             }
 
             int occurrence = Store.Add(raw.Time, condition, stack, variant, raw.Background ? OccurrenceFlags.BackgroundThread : OccurrenceFlags.None);
-            mirror.Track(occurrence, condition, LogVariants.Level(variant), raw.Time);
+            mirror.Track(occurrence, condition, LogVariants.Level(variant));
         }
 
         internal static bool IsCompilerMessage(string condition, out bool error)
