@@ -23,23 +23,93 @@ namespace Orbiters.Logger.Editor.UnitGit
         private const string Source = "unitgit";
         private const double RefreshSeconds = 60d;
         private static double nextRefresh;
+        private static double nextHeadCheck;
+        private static DateTime lastHeadWrite;
         private static int running;
 
         static UnitGitTimeline()
         {
             UnitGitReleases.ChangedExternally += Refresh;
+#if LOGGER_UNITGIT_COMMANDS
+            UnitGitCommandLog.Completed += OnCommand;
+#endif
             EditorApplication.update += Update;
         }
 
         private static void Update()
         {
-            if (EditorApplication.timeSinceStartup < nextRefresh || !LoggerWindow.IsOpen)
+            double now = EditorApplication.timeSinceStartup;
+            if (now >= nextHeadCheck)
+            {
+                // A commit (from Unit Git or anywhere else) writes .git/logs/HEAD: show it at once.
+                nextHeadCheck = now + 1d;
+                try
+                {
+                    var write = File.GetLastWriteTimeUtc(Path.Combine(".git", "logs", "HEAD"));
+                    if (write != lastHeadWrite)
+                    {
+                        bool first = lastHeadWrite == default;
+                        lastHeadWrite = write;
+                        if (!first)
+                        {
+                            Refresh();
+                            return;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // No repository: nothing to watch.
+                }
+            }
+
+            if (now < nextRefresh || !LoggerWindow.IsOpen)
             {
                 return;
             }
 
             Refresh();
         }
+
+#if LOGGER_UNITGIT_COMMANDS
+        // Each Git command Unit Git runs becomes a log: the command and its result as the message, what it printed as
+        // the output. Not sent to Unity's console. Called on the thread that ran the command.
+        private static void OnCommand(UnitGitCommandRecord record)
+        {
+            if (record == null)
+            {
+                return;
+            }
+
+            string result = record.TimedOut ? "timed out" : record.ExitCode == 0 ? "ok" : "exit " + record.ExitCode;
+            string condition = "[Unit Git] " + record.CommandLine + "  →  " + result;
+            var output = new StringBuilder(LogStoreOutputPrefix);
+            output.Append(record.Milliseconds.ToString("0", CultureInfo.InvariantCulture)).Append(" ms in ").Append(record.WorkingDirectory).Append('\n');
+            Append(output, record.StandardOutput);
+            if (!string.IsNullOrWhiteSpace(record.StandardError))
+            {
+                output.Append("stderr:\n");
+                Append(output, record.StandardError);
+            }
+
+            var type = record.TimedOut ? UnityEngine.LogType.Error : record.ExitCode == 0 ? UnityEngine.LogType.Log : UnityEngine.LogType.Warning;
+            LogCapture.Inject(condition, output.ToString(), type);
+        }
+
+        private const string LogStoreOutputPrefix = StackTraces.OutputPrefix;
+        private const int MaxOutput = 4000;
+
+        private static void Append(StringBuilder builder, string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            text = text.TrimEnd();
+            builder.Append(text.Length > MaxOutput ? text.Substring(0, MaxOutput) + "\n… (" + (text.Length - MaxOutput) + " more characters)" : text).Append('\n');
+        }
+#endif
 
         private static void Refresh()
         {

@@ -248,6 +248,19 @@ namespace Orbiters.Logger.Editor
                     location.Add(FrameRow(new StackFrame(store.Texts[message.File], string.Empty, store.Texts[message.File], message.Line, StackFrameKind.User), message.Column));
                 }
             }
+            else if (message.Stack > 0 && StackTraces.IsOutput(store.Texts[message.Stack]))
+            {
+                string output = store.Texts[message.Stack].Substring(StackTraces.OutputPrefix.Length).TrimEnd();
+                var outputLabel = new Label(RichText.Literal(output.Length > MaxDetailChars ? output.Substring(0, MaxDetailChars) : output));
+                outputLabel.AddToClassList("lg-details__output");
+                outputLabel.selection.isSelectable = true;
+                if (MonoFont != null)
+                {
+                    outputLabel.style.unityFont = MonoFont;
+                }
+
+                Card(main, "Output").Add(outputLabel);
+            }
             else if (message.Stack > 0)
             {
                 BuildStack(Card(main, "Stack trace"), store.Texts[message.Stack]);

@@ -40,14 +40,16 @@ namespace Orbiters.Logger.Editor
             public readonly string Stack;
             public readonly LogType Type;
             public readonly bool Background;
+            public readonly bool Injected;
 
-            public RawLog(long time, string condition, string stack, LogType type, bool background)
+            public RawLog(long time, string condition, string stack, LogType type, bool background, bool injected = false)
             {
                 Time = time;
                 Condition = condition;
                 Stack = stack;
                 Type = type;
                 Background = background;
+                Injected = injected;
             }
         }
 
@@ -175,6 +177,22 @@ namespace Orbiters.Logger.Editor
             }
         }
 
+        /// <summary>
+        /// Files a log that never goes through Unity's console (another tool's activity, such as Unit Git's commands).
+        /// Any thread.
+        /// </summary>
+        internal static void Inject(string condition, string stack, LogType type)
+        {
+            if (Interlocked.Increment(ref queued) > MaxQueued)
+            {
+                Interlocked.Decrement(ref queued);
+                Interlocked.Increment(ref dropped);
+                return;
+            }
+
+            queue.Enqueue(new RawLog(DateTime.UtcNow.Ticks, condition, stack, type, Thread.CurrentThread.ManagedThreadId != mainThread, injected: true));
+        }
+
         private static void Update()
         {
             if (reloading || Store == null)
@@ -241,7 +259,7 @@ namespace Orbiters.Logger.Editor
             var variant = LogVariants.From(raw.Type);
             string condition = raw.Condition ?? string.Empty;
             string stack = raw.Stack ?? string.Empty;
-            if (stack.Length == 0 && (variant == LogVariant.Error || variant == LogVariant.Warning) && IsCompilerMessage(condition, out bool error))
+            if (!raw.Injected && stack.Length == 0 && (variant == LogVariant.Error || variant == LogVariant.Warning) && IsCompilerMessage(condition, out bool error))
             {
                 // Also reported by the compilation pipeline: one copy, which a later compilation replaces.
                 if (compileCycle.Add(condition))
@@ -253,7 +271,11 @@ namespace Orbiters.Logger.Editor
             }
 
             int occurrence = Store.Add(raw.Time, condition, stack, variant, raw.Background ? OccurrenceFlags.BackgroundThread : OccurrenceFlags.None);
-            mirror.Track(occurrence, condition, LogVariants.Level(variant));
+            if (!raw.Injected)
+            {
+                // Only logs Unity also shows wait for their console row.
+                mirror.Track(occurrence, condition, LogVariants.Level(variant));
+            }
         }
 
         internal static bool IsCompilerMessage(string condition, out bool error)

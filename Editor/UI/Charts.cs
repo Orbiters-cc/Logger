@@ -638,7 +638,7 @@ namespace Orbiters.Logger.Editor
                     float x = XOf(sessionEvent.Time);
                     var color = ChartColors.Event(sessionEvent.Kind);
                     batch.Rect(x, 0, 1f, height, new Color(color.r, color.g, color.b, 0.35f));
-                    batch.Rect(x - 2f, 0, 5f, 3f, color);
+                    batch.Rect(x - 2f, height - 3f, 5f, 3f, color);
                 }
 
                 // Project history (Unit Git): commits as blue ticks, releases as gold pins.
@@ -654,12 +654,12 @@ namespace Orbiters.Logger.Editor
                     if (marker.Kind == TimelineMarkerKind.Release)
                     {
                         batch.Rect(x, 0, 1.5f, height, new Color(1f, 0.79f, 0.3f, 0.7f));
-                        batch.Rect(x - 3.5f, height - 9f, 8.5f, 8.5f, new Color(1f, 0.79f, 0.3f, 1f));
+                        batch.Rect(x - 3.5f, 0, 8.5f, 8.5f, new Color(1f, 0.79f, 0.3f, 1f));
                     }
                     else
                     {
-                        batch.Rect(x, 0, 1f, height, new Color(0.42f, 0.65f, 1f, 0.45f));
-                        batch.Rect(x - 2.5f, height - 6.5f, 6f, 6f, new Color(0.42f, 0.65f, 1f, 1f));
+                        batch.Rect(x - 0.5f, 0, 2f, height, new Color(0.42f, 0.65f, 1f, 0.6f));
+                        batch.Rect(x - 3f, 0, 7f, 7f, new Color(0.42f, 0.65f, 1f, 1f));
                     }
                 }
 

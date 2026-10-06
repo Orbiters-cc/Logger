@@ -2328,3 +2328,9 @@
     padding-left: 7px;
     padding-right: 7px;
 }
+
+.lg-details__output {
+    color: #d6d6d6;
+    font-size: 11px;
+    white-space: normal;
+}

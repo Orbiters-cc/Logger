@@ -257,6 +257,14 @@ namespace Orbiters.Logger.Editor
                 return;
             }
 
+            if (StackTraces.IsOutput(stack))
+            {
+                // A command's log: its timing line under the message.
+                message.Source = Sources.Resolve(message.Variant, condition, new List<StackFrame>(), -1, null);
+                message.Callsite = Texts.Intern(RichText.FirstLine(stack.Substring(StackTraces.OutputPrefix.Length), 160));
+                return;
+            }
+
             var frames = StackTraces.Parse(stack);
             int callsite = StackTraces.FindCallsite(frames);
             message.Source = Sources.Resolve(message.Variant, condition, frames, callsite, null);
