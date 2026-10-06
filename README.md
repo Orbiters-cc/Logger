@@ -1,5 +1,12 @@
 # Logger
 
+## Unreleased
+
+- With Unit Git in the project, the timeline shows its commits (blue) and releases (gold) inside the logged time;
+  hover lists them. Other tools can add markers with `TimelineMarkers.Set`.
+- Source chips carry the MCB, My Avatar and ReFit logos.
+- The time of a row is centred on the row; stack-trace file links line up in one column.
+
 ## 0.1.0 — 2026-10-06
 
 - First release: a log hub for the Unity editor that replaces the Console.
@@ -97,6 +104,19 @@ Clearing Unity's console from its own window doesn't clear the Logger.
   ListView loses pixels past a few million rows).
 - **No dependency.** The Logger only uses Unity's editor API, so it keeps working while other packages fail to
   compile. Its building blocks follow Orbiters Toolkit's look and its press-first buttons.
+
+## Unit Git
+
+When Unit Git 0.2 or newer is installed, an extra assembly (`Orbiters.Logger.Editor.UnitGit`, compiled only then)
+puts the project's history on the timeline: Unit Git releases from its release catalog, and commits from `git log`
+(the last 30 days, read on a worker thread). Only what happened inside the logged time shows. It refreshes when Unit
+Git records something and every minute while a Logger window is open.
+
+Other tools can add their own markers:
+
+```csharp
+TimelineMarkers.Set("mytool", new[] { new TimelineMarker(DateTime.UtcNow, TimelineMarkerKind.Note, "Avatar uploaded") });
+```
 
 ## Explanations for your tool
 

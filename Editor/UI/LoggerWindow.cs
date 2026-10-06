@@ -51,6 +51,7 @@ namespace Orbiters.Logger.Editor
         private int newRows;
         private bool built;
         private bool visible = true;
+        private int seenMarkers = -1;
 
         internal static bool IsOpen => openWindows > 0;
 
@@ -345,6 +346,12 @@ namespace Orbiters.Logger.Editor
                 {
                     Refilter(allowAsync: true);
                 }
+            }
+
+            if (TimelineMarkers.Version != seenMarkers)
+            {
+                seenMarkers = TimelineMarkers.Version;
+                chromeDirty = true;
             }
 
             if (chromeDirty && now - lastChrome > 0.1d)

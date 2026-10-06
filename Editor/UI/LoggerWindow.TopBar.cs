@@ -344,7 +344,7 @@ namespace Orbiters.Logger.Editor
                 footerProgressFill.style.width = Length.Percent(Mathf.Clamp01(history.Progress) * 100f);
             }
 
-            timeline.Set(state, store?.Events, rangeFrom, rangeTo);
+            timeline.Set(state, store?.Events, TimelineMarkers.All, rangeFrom, rangeTo);
             UpdateListChrome();
 
             if (store == null || state == null)

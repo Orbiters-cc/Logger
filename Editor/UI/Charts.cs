@@ -293,6 +293,7 @@ namespace Orbiters.Logger.Editor
         private readonly Label emptyLabel;
         private FilterState state;
         private IReadOnlyList<SessionEvent> events = new SessionEvent[0];
+        private TimelineMarker[] markers = new TimelineMarker[0];
         private long rangeFrom;
         private long rangeTo;
         private int hover = -1;
@@ -348,10 +349,11 @@ namespace Orbiters.Logger.Editor
         /// <summary>Width of the plot in pixels: decides how many buckets the filter computes.</summary>
         public float PlotWidth => float.IsNaN(plot.layout.width) ? 0f : plot.layout.width;
 
-        public void Set(FilterState filter, IReadOnlyList<SessionEvent> sessionEvents, long from, long to)
+        public void Set(FilterState filter, IReadOnlyList<SessionEvent> sessionEvents, TimelineMarker[] projectMarkers, long from, long to)
         {
             state = filter;
             events = sessionEvents ?? new SessionEvent[0];
+            markers = projectMarkers ?? new TimelineMarker[0];
             rangeFrom = from;
             rangeTo = to;
             bool hasData = state != null && state.HasTimeline && state.Covered > 0;
@@ -537,6 +539,35 @@ namespace Orbiters.Logger.Editor
                 }
             }
 
+            int listed = 0;
+            int more = 0;
+            foreach (var marker in markers)
+            {
+                long ticks = marker.TimeUtc.Ticks;
+                if (ticks < start || ticks >= end)
+                {
+                    continue;
+                }
+
+                if (listed++ >= 4)
+                {
+                    more++;
+                    continue;
+                }
+
+                text.Append('\n').Append(marker.Kind == TimelineMarkerKind.Release ? "<color=#ffd06a>◆ " : "<color=#9dbbff>● ")
+                    .Append(LoggerUi.Time(ticks, false)).Append("</color>  ").Append(RichText.Literal(Shorten(marker.Title, 70)));
+                if (!string.IsNullOrEmpty(marker.Detail))
+                {
+                    text.Append("  <color=#8a8a8a>").Append(RichText.Literal(Shorten(marker.Detail, 40))).Append("</color>");
+                }
+            }
+
+            if (more > 0)
+            {
+                text.Append("\n<color=#8a8a8a>+").Append(more).Append(" more</color>");
+            }
+
             tip.text = text.ToString();
             tip.style.display = DisplayStyle.Flex;
             float x = PlotWidth * (hover + 0.5f) / buckets;
@@ -610,6 +641,28 @@ namespace Orbiters.Logger.Editor
                     batch.Rect(x - 2f, 0, 5f, 3f, color);
                 }
 
+                // Project history (Unit Git): commits as blue ticks, releases as gold pins.
+                foreach (var marker in markers)
+                {
+                    long ticks = marker.TimeUtc.Ticks;
+                    if (ticks < state.ChartFrom || ticks > state.ChartTo)
+                    {
+                        continue;
+                    }
+
+                    float x = XOf(ticks);
+                    if (marker.Kind == TimelineMarkerKind.Release)
+                    {
+                        batch.Rect(x, 0, 1.5f, height, new Color(1f, 0.79f, 0.3f, 0.7f));
+                        batch.Rect(x - 3.5f, height - 9f, 8.5f, 8.5f, new Color(1f, 0.79f, 0.3f, 1f));
+                    }
+                    else
+                    {
+                        batch.Rect(x, 0, 1f, height, new Color(0.42f, 0.65f, 1f, 0.45f));
+                        batch.Rect(x - 2.5f, height - 6.5f, 6f, 6f, new Color(0.42f, 0.65f, 1f, 1f));
+                    }
+                }
+
                 if (ranged)
                 {
                     batch.Rect(rangeA, 0, Math.Max(1f, rangeB - rangeA), height, new Color(0f, 0.85f, 0.43f, 0.10f));
@@ -629,6 +682,8 @@ namespace Orbiters.Logger.Editor
 
             batch.Flush(context);
         }
+
+        private static string Shorten(string text, int max) => text.Length > max ? text.Substring(0, max) + "…" : text;
 
         private float Segment(float x, float bottom, float width, float height, Color color, float alpha)
         {

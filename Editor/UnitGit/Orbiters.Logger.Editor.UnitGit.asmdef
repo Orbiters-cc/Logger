@@ -1,0 +1,28 @@
+{
+  "name": "Orbiters.Logger.Editor.UnitGit",
+  "rootNamespace": "Orbiters.Logger.Editor.UnitGit",
+  "references": [
+    "Orbiters.Logger.Editor",
+    "orbiters.unitgit",
+    "orbiters.unitgit.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "defineConstraints": [
+    "LOGGER_UNITGIT"
+  ],
+  "versionDefines": [
+    {
+      "name": "orbiters.unitgit",
+      "expression": "0.2.0",
+      "define": "LOGGER_UNITGIT"
+    }
+  ],
+  "noEngineReferences": false
+}

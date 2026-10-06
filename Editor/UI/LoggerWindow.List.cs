@@ -37,7 +37,7 @@ namespace Orbiters.Logger.Editor
             public VisualElement Edge;
             public LoggerIcon Icon;
             public Label Time;
-            public Label Source;
+            public SourceChip Source;
             public Label Message;
             public Label Sub;
             public LoggerIcon Bulb;
@@ -133,7 +133,7 @@ namespace Orbiters.Logger.Editor
                 Edge = LoggerUi.Box("lg-row__edge", PickingMode.Ignore),
                 Icon = new LoggerIcon(LoggerGlyph.Info),
                 Time = LoggerUi.Text(string.Empty, "lg-row__time"),
-                Source = LoggerUi.Text(string.Empty, "lg-row__source"),
+                Source = new SourceChip("lg-row__source"),
                 Message = LoggerUi.Text(string.Empty, "lg-row__message"),
                 Sub = LoggerUi.Text(string.Empty, "lg-row__sub"),
                 Bulb = new LoggerIcon(LoggerGlyph.Bulb),
@@ -147,16 +147,15 @@ namespace Orbiters.Logger.Editor
             parts.Message.enableRichText = true;
             parts.Sub.enableRichText = false;
             parts.Time.pickingMode = PickingMode.Ignore;
-            parts.Source.pickingMode = PickingMode.Ignore;
             parts.Message.pickingMode = PickingMode.Ignore;
             parts.Sub.pickingMode = PickingMode.Ignore;
             parts.Count.pickingMode = PickingMode.Ignore;
 
             row.Add(parts.Edge);
             row.Add(parts.Icon);
+            row.Add(parts.Time);
             var main = LoggerUi.Box("lg-row__main", PickingMode.Ignore);
             var top = LoggerUi.Box("lg-row__top", PickingMode.Ignore);
-            top.Add(parts.Time);
             top.Add(parts.Source);
             top.Add(parts.Message);
             main.Add(top);
@@ -204,9 +203,7 @@ namespace Orbiters.Logger.Editor
             bool approximate = (flags & OccurrenceFlags.ApproximateTime) != 0;
             parts.Time.text = LoggerUi.Time(store.TimeAt(occurrence), !approximate);
 
-            parts.Source.text = source.Name;
-            parts.Source.style.color = source.Color;
-            parts.Source.style.backgroundColor = new Color(source.Color.r, source.Color.g, source.Color.b, 0.13f);
+            parts.Source.Set(source);
 
             parts.Message.text = DisplayLine(store, ref message);
             string sub = message.Callsite > 0 ? store.Texts[message.Callsite] : RichText.SecondLine(store.Texts.Plain(message.Text), 200);

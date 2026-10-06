@@ -14,7 +14,7 @@ namespace Orbiters.Logger.Editor
         private VisualElement detailsPane;
         private LoggerIcon detailsIcon;
         private Label detailsKind;
-        private Label detailsSource;
+        private SourceChip detailsSource;
         private Label detailsMeta;
         private VisualElement detailsActions;
         private Button openButton;
@@ -44,7 +44,7 @@ namespace Orbiters.Logger.Editor
             header.Add(detailsIcon);
             detailsKind = LoggerUi.Text(string.Empty, "lg-details__kind");
             header.Add(detailsKind);
-            detailsSource = LoggerUi.Text(string.Empty, "lg-details__source");
+            detailsSource = new SourceChip("lg-details__source");
             header.Add(detailsSource);
             detailsMeta = LoggerUi.Text(string.Empty, "lg-details__meta");
             header.Add(detailsMeta);
@@ -191,9 +191,8 @@ namespace Orbiters.Logger.Editor
             detailsPane.EnableInClassList("lg-details--warning", level == LogLevel.Warning);
             detailsIcon.Glyph = LoggerIcon.ForLevel(level);
             detailsKind.text = LogVariants.Label(message.Variant);
-            detailsSource.text = source.Name;
-            detailsSource.style.color = source.Color;
-            detailsSource.style.backgroundColor = new Color(source.Color.r, source.Color.g, source.Color.b, 0.13f);
+            detailsSource.Set(source, 10f);
+            detailsSource.style.display = DisplayStyle.Flex;
             var flags = store.FlagsAt(occurrence);
             string time = LoggerUi.Moment(store.TimeAt(occurrence));
             if ((flags & OccurrenceFlags.ApproximateTime) == 0)
@@ -528,8 +527,7 @@ namespace Orbiters.Logger.Editor
             detailsPane.EnableInClassList("lg-details--warning", false);
             detailsIcon.Glyph = LoggerGlyph.List;
             detailsKind.text = LoggerUi.Plural(count, grouped ? "message" : "log") + " selected";
-            detailsSource.text = string.Empty;
-            detailsSource.style.backgroundColor = new Color(0, 0, 0, 0);
+            detailsSource.style.display = DisplayStyle.None;
             openButton.SetEnabled(false);
             contextButton.style.display = DisplayStyle.None;
 
