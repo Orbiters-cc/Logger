@@ -39,8 +39,11 @@ namespace Orbiters.Logger.Editor
                 lastPress = now;
                 handledByPress = true;
                 element.schedule.Execute(() => handledByPress = false).StartingIn(800);
+                // Keep Unity's Clickable from capturing the pointer: a menu or popup opened here takes the pointer-up,
+                // the capture would stay, and every later click would land on this button again.
+                evt.StopImmediatePropagation();
+                evt.PreventDefault();
                 action?.Invoke();
-                evt.StopPropagation();
             }, TrickleDown.TrickleDown);
             element.RegisterCallback<PointerUpEvent>(_ => element.RemoveFromClassList(PressedClass));
             element.RegisterCallback<PointerLeaveEvent>(_ => element.RemoveFromClassList(PressedClass));

@@ -396,7 +396,9 @@ namespace Orbiters.Logger.Editor
                 menu.AddItem(new GUIContent(SortLabel(value)), sort == value, () => SetSort(captured));
             }
 
-            menu.DropDown(sortButton.worldBound);
+            // Opened a frame later, once the press that asked for it is over.
+            var bounds = sortButton.worldBound;
+            sortButton.schedule.Execute(() => menu.DropDown(bounds));
         }
 
         // ---- Selection ------------------------------------------------------------------------------------------
