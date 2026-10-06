@@ -1,0 +1,24 @@
+{
+  "name": "Orbiters.Logger.Editor.Tests",
+  "rootNamespace": "Orbiters.Logger.Editor.Tests",
+  "references": [
+    "Orbiters.Logger",
+    "Orbiters.Logger.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
