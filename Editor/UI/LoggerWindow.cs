@@ -36,6 +36,7 @@ namespace Orbiters.Logger.Editor
         [SerializeField] private float detailsPaneHeight = 320f;
 
         private readonly FilterRunner runner = new FilterRunner();
+        private readonly TimingIndex timings = new TimingIndex();
         private LogStore boundStore;
         private FilterState state;
         private LogQuery query = LogQuery.Empty;
@@ -52,6 +53,8 @@ namespace Orbiters.Logger.Editor
         private bool built;
         private bool visible = true;
         private int seenMarkers = -1;
+        private int seenTimings = -1;
+        private UndoTimelineView undoView;
 
         internal static bool IsOpen => openWindows > 0;
 
@@ -133,6 +136,10 @@ namespace Orbiters.Logger.Editor
             searchRow.style.display = DisplayStyle.None;
             rootVisualElement.Add(searchRow);
             rootVisualElement.Add(BuildTimeline());
+            undoView = new UndoTimelineView(rootVisualElement);
+            undoView.TimeHovered += time => timeline.SetHighlight(time);
+            LoggerUi.Show(undoView, UndoHistory.Enabled);
+            rootVisualElement.Add(undoView);
             rootVisualElement.Add(BuildBody());
             rootVisualElement.Add(BuildFooter());
             rootVisualElement.RegisterCallback<GeometryChangedEvent>(_ => ApplyLayout());
@@ -149,6 +156,7 @@ namespace Orbiters.Logger.Editor
             }
 
             Bind(Store);
+            timings.Update(Store);
             Refilter(allowAsync: false);
             list.ScrollToEnd();
             rootVisualElement.schedule.Execute(Tick).Every(TickMs);
@@ -317,6 +325,13 @@ namespace Orbiters.Logger.Editor
                 Refilter(allowAsync: false);
             }
 
+            timings.Update(store);
+            if (timings.Changes != seenTimings)
+            {
+                seenTimings = timings.Changes;
+                chromeDirty = true;
+            }
+
             var ready = runner.TryTake();
             if (ready != null)
             {
@@ -345,6 +360,16 @@ namespace Orbiters.Logger.Editor
                 if (age > 3d && store.Version != fullPassVersion || age > 15d)
                 {
                     Refilter(allowAsync: true);
+                }
+            }
+
+            if (undoView != null)
+            {
+                bool undoOn = UndoHistory.Enabled;
+                LoggerUi.Show(undoView, undoOn);
+                if (undoOn)
+                {
+                    undoView.Refresh();
                 }
             }
 

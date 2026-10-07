@@ -44,6 +44,7 @@ namespace Orbiters.Logger.Editor
             public LoggerIcon Context;
             public Sparkline Spark;
             public Label Count;
+            public TimingStrip Strip;
         }
 
         private VisualElement BuildListPane()
@@ -139,7 +140,8 @@ namespace Orbiters.Logger.Editor
                 Bulb = new LoggerIcon(LoggerGlyph.Bulb),
                 Context = new LoggerIcon(LoggerGlyph.Target),
                 Spark = new Sparkline(),
-                Count = LoggerUi.Text(string.Empty, "lg-row__count")
+                Count = LoggerUi.Text(string.Empty, "lg-row__count"),
+                Strip = new TimingStrip(false, "lg-row__timing")
             };
             parts.Icon.AddToClassList("lg-row__icon");
             parts.Bulb.AddToClassList("lg-row__bulb");
@@ -160,6 +162,7 @@ namespace Orbiters.Logger.Editor
             top.Add(parts.Message);
             main.Add(top);
             main.Add(parts.Sub);
+            main.Add(parts.Strip);
             row.Add(main);
             var trail = LoggerUi.Box("lg-row__trail", PickingMode.Ignore);
             trail.Add(parts.Context);
@@ -197,7 +200,9 @@ namespace Orbiters.Logger.Editor
             row.EnableInClassList("lg-row--selected", IsSelected(key));
             row.EnableInClassList("lg-row--cursor", key == cursor);
             row.EnableInClassList("lg-row--odd", (index & 1) == 1);
-            parts.Icon.Glyph = LoggerIcon.ForLevel(level);
+            bool timing = timings.TryGet(messageId, out var profile);
+            row.EnableInClassList("lg-row--timing", timing);
+            parts.Icon.Glyph = timing ? LoggerGlyph.Stopwatch : LoggerIcon.ForLevel(level);
 
             var flags = store.FlagsAt(occurrence);
             bool approximate = (flags & OccurrenceFlags.ApproximateTime) != 0;
@@ -213,6 +218,12 @@ namespace Orbiters.Logger.Editor
             }
 
             parts.Sub.text = sub;
+            LoggerUi.Show(parts.Sub, !timing);
+            LoggerUi.Show(parts.Strip, timing);
+            if (timing)
+            {
+                parts.Strip.Set(profile, (float)(profile.TotalMilliseconds / timings.Slowest(profile.Kind)));
+            }
 
             int explanation = ExplanationOf(messageId);
             LoggerUi.Show(parts.Bulb, explanation >= 0);
@@ -226,6 +237,19 @@ namespace Orbiters.Logger.Editor
             LoggerUi.Show(parts.Context, !grouped && store.TryGetContext(occurrence, out _));
             // Rows are recycled between modes: a sparkline shown in Groups must not stay on a List row.
             LoggerUi.Show(parts.Spark, false);
+            parts.Count.EnableInClassList("lg-row__count--timing", timing && !grouped);
+            if (timing && !grouped)
+            {
+                parts.Count.text = TimingProfile.FormatDuration(profile.TotalMilliseconds);
+                parts.Count.tooltip = TimingProfile.KindLabel(profile.Kind);
+                parts.Count.EnableInClassList("lg-row__count--many", false);
+            }
+            else if (!grouped)
+            {
+                parts.Count.text = string.Empty;
+                parts.Count.tooltip = null;
+            }
+
             if (grouped)
             {
                 int count = state.GroupCount[key];

@@ -70,7 +70,8 @@ def main():
         "Editor/Capture/ConsoleMirror.cs", "Editor/Capture/LogSnapshot.cs",
         "Editor/Model/LogStore.cs", "Editor/Model/TextTable.cs", "Editor/Model/SourceCatalog.cs", "Editor/Model/StackTraces.cs",
         "Editor/Query/LogQuery.cs", "Editor/Query/LogFilter.cs",
-        "Editor/Knowledge/LogExplanations.cs", "Editor/Knowledge/KnownLogs.cs",
+        "Editor/Knowledge/LogExplanations.cs", "Editor/Knowledge/KnownLogs.cs", "Editor/Knowledge/explanations.json",
+        "Editor/Knowledge/RemoteExplanations.cs", "Editor/Capture/ReloadTimings.cs", "Editor/Model/TimingProfile.cs",
         "Editor/UI/LoggerWindow.cs", "Editor/UI/VirtualList.cs", "Editor/UI/Charts.cs", "Editor/UI/LoggerIcon.cs",
         "Editor/UI/logger.uss",
     )

@@ -70,7 +70,58 @@ namespace Orbiters.Logger.Editor.Tests
         public void LevelsRestrictMatches()
         {
             Assert.AreEqual("vrchat.vrcfury-error", IdOf("VRCFury failed to build the avatar", level: LogLevel.Error));
-            Assert.IsNull(IdOf("VRCFury is building", level: LogLevel.Info));
+            Assert.AreNotEqual("vrchat.vrcfury-error", IdOf("VRCFury failed to build the avatar", level: LogLevel.Info));
+            Assert.IsNull(IdOf("Something unknown is building", level: LogLevel.Info));
+        }
+
+        [Test]
+        public void TheSdkOwnershipErrorIsExplained()
+        {
+            Assert.AreEqual("vrchat.avatar-not-yours",
+                IdOf("Failed to load avatar data: Avatar's current ID belongs to a different user, assign a different ID"));
+        }
+
+        [Test]
+        public void ServerEntriesReplaceTheirLocalCopyAndPriorityOrdersThem()
+        {
+            var entries = KnownLogs.Parse(@"{ ""explanations"": [
+                { ""id"": ""tests.broad"", ""needle"": ""ZZ-probe"", ""priority"": -10, ""severity"": ""info"", ""source"": ""Tests"", ""title"": ""Broad"" },
+                { ""id"": ""tests.exact"", ""needle"": ""ZZ-probe exact"", ""severity"": ""problem"", ""source"": ""Tests"", ""title"": ""Exact {what}"",
+                  ""pattern"": ""ZZ-probe exact (?<what>\\w+)"" },
+                { ""id"": ""csharp.null-reference"", ""needle"": ""NullReferenceException"", ""severity"": ""warning"", ""source"": ""Tests"", ""title"": ""From the server"" }
+            ] }");
+            Assert.AreEqual(3, entries.Count);
+            try
+            {
+                LogExplanations.SetRemote(entries);
+                Assert.AreEqual("tests.exact", IdOf("ZZ-probe exact thing"));
+                Assert.AreEqual("tests.broad", IdOf("ZZ-probe other"));
+                Assert.AreEqual("Exact thing", LogExplanations.Explain(LogExplanations.Match("ZZ-probe exact thing", "", LogLevel.Error), "ZZ-probe exact thing").Title);
+                Assert.AreEqual("From the server", LogExplanations.Get(LogExplanations.Match("NullReferenceException: x", "", LogLevel.Error)).Title);
+            }
+            finally
+            {
+                LogExplanations.SetRemote(null);
+            }
+
+            Assert.AreEqual("csharp.null-reference", IdOf("NullReferenceException: x"));
+            Assert.AreNotEqual("From the server", LogExplanations.Get(LogExplanations.Match("NullReferenceException: x", "", LogLevel.Error)).Title);
+        }
+
+        [Test]
+        public void AnInvalidPatternNeverMatches()
+        {
+            var entries = KnownLogs.Parse(@"{ ""explanations"": [
+                { ""id"": ""tests.invalid"", ""needle"": ""ZZ-invalid"", ""pattern"": ""(unclosed"", ""severity"": ""info"", ""source"": ""Tests"", ""title"": ""Invalid"" } ] }");
+            try
+            {
+                LogExplanations.SetRemote(entries);
+                Assert.IsNull(IdOf("ZZ-invalid here"));
+            }
+            finally
+            {
+                LogExplanations.SetRemote(null);
+            }
         }
     }
 }

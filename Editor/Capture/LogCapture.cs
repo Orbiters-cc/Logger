@@ -64,6 +64,8 @@ namespace Orbiters.Logger.Editor
         private static bool reloading;
         private static int lastVersion = -1;
         private static long lastReport;
+        private static double nextLedger;
+        private static double nextLedgerSave = 300d;
 
         static LogCapture()
         {
@@ -80,7 +82,11 @@ namespace Orbiters.Logger.Editor
 
             EditorApplication.update += Update;
             AssemblyReloadEvents.beforeAssemblyReload += BeforeReload;
-            EditorApplication.quitting += LogSnapshot.Delete;
+            EditorApplication.quitting += () =>
+            {
+                LogLedger.Save(Store);
+                LogSnapshot.Delete();
+            };
             EditorApplication.playModeStateChanged += OnPlayModeChanged;
             CompilationPipeline.compilationStarted += OnCompilationStarted;
             CompilationPipeline.assemblyCompilationFinished += OnAssemblyCompiled;
@@ -220,6 +226,19 @@ namespace Orbiters.Logger.Editor
                     lastVersion = Store.Version;
                     Changed?.Invoke();
                 }
+
+                // How long each message has been appearing: new messages now and then, a save every few minutes.
+                double time = EditorApplication.timeSinceStartup;
+                if (time >= nextLedger && history == null)
+                {
+                    nextLedger = time + 1d;
+                    LogLedger.Track(Store);
+                    if (time >= nextLedgerSave)
+                    {
+                        nextLedgerSave = time + 300d;
+                        LogLedger.Save(Store);
+                    }
+                }
             }
             catch (Exception exception)
             {
@@ -259,6 +278,12 @@ namespace Orbiters.Logger.Editor
             var variant = LogVariants.From(raw.Type);
             string condition = raw.Condition ?? string.Empty;
             string stack = raw.Stack ?? string.Empty;
+            if (ReloadTimings.IsOwnNotice(condition))
+            {
+                // Unity's notice that the Logger's reload measuring is on, at every reload: not a problem to report.
+                return;
+            }
+
             if (!raw.Injected && stack.Length == 0 && (variant == LogVariant.Error || variant == LogVariant.Warning) && IsCompilerMessage(condition, out bool error))
             {
                 // Also reported by the compilation pipeline: one copy, which a later compilation replaces.
@@ -431,6 +456,7 @@ namespace Orbiters.Logger.Editor
                 }
 
                 LogSnapshot.Save(Store, info);
+                LogLedger.Save(Store);
             }
             catch (Exception)
             {

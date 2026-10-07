@@ -171,7 +171,7 @@ namespace Orbiters.Logger.Editor
     internal sealed class FrequencyChart : VisualElement
     {
         private readonly QuadBatch batch = new QuadBatch();
-        private readonly Label tooltipLabel;
+        private readonly FloatingTip tip;
         private int[] values = new int[0];
         private long from;
         private long to;
@@ -182,10 +182,7 @@ namespace Orbiters.Logger.Editor
         {
             AddToClassList("lg-frequency");
             generateVisualContent += Draw;
-            tooltipLabel = LoggerUi.Text(string.Empty, "lg-chart-tip");
-            tooltipLabel.pickingMode = PickingMode.Ignore;
-            tooltipLabel.style.display = DisplayStyle.None;
-            Add(tooltipLabel);
+            tip = new FloatingTip(this);
             RegisterCallback<PointerMoveEvent>(evt => SetHover(evt.localPosition.x));
             RegisterCallback<PointerLeaveEvent>(_ => SetHover(-1f));
         }
@@ -220,19 +217,15 @@ namespace Orbiters.Logger.Editor
         {
             if (hover < 0 || hover >= values.Length)
             {
-                tooltipLabel.style.display = DisplayStyle.None;
+                tip.Hide();
                 return;
             }
 
             long span = Math.Max(1L, to - from);
             long start = from + span * hover / values.Length;
             long end = from + span * (hover + 1) / values.Length;
-            tooltipLabel.text = LoggerUi.Time(start, false) + " – " + LoggerUi.Time(end, false) + "   ×" + LoggerUi.Count(values[hover]);
-            tooltipLabel.style.display = DisplayStyle.Flex;
             float x = contentRect.width * (hover + 0.5f) / values.Length;
-            bool right = x > contentRect.width * 0.6f;
-            tooltipLabel.style.left = right ? StyleKeyword.Auto : new StyleLength(Math.Max(0f, x + 8f));
-            tooltipLabel.style.right = right ? new StyleLength(Math.Max(0f, contentRect.width - x + 8f)) : StyleKeyword.Auto;
+            tip.Show(LoggerUi.Time(start, false) + " – " + LoggerUi.Time(end, false) + "   ×" + LoggerUi.Count(values[hover]), x, 4f);
         }
 
         private void Draw(MeshGenerationContext context)
@@ -289,11 +282,17 @@ namespace Orbiters.Logger.Editor
         private readonly Label startLabel;
         private readonly Label middleLabel;
         private readonly Label endLabel;
-        private readonly Label tip;
+        private readonly FloatingTip tip;
         private readonly Label emptyLabel;
         private FilterState state;
         private IReadOnlyList<SessionEvent> events = new SessionEvent[0];
         private TimelineMarker[] markers = new TimelineMarker[0];
+        private IReadOnlyList<TimingEntry> timingEntries = new TimingEntry[0];
+        private readonly VisualElement timingLane;
+        private readonly QuadBatch laneBatch = new QuadBatch();
+        private readonly List<(float x, int index)> laneMarks = new List<(float x, int index)>();
+        private int laneHover = -1;
+        private long highlight;
         private VisualElement markerLabels;
         private string labelsKey = string.Empty;
         private long rangeFrom;
@@ -307,6 +306,8 @@ namespace Orbiters.Logger.Editor
 
         public event Action<long, long> RangeSelected;
         public event Action<long> TimeClicked;
+        /// <summary>A timing mark (reload, Play Mode, build, upload) was clicked: its log's message.</summary>
+        public event Action<int> TimingClicked;
 
         public TimelineView()
         {
@@ -317,6 +318,23 @@ namespace Orbiters.Logger.Editor
             plot.Add(markerLabels);
             plot.RegisterCallback<GeometryChangedEvent>(_ => LayoutMarkerLabels());
             Add(plot);
+
+            // Reloads, entries into Play Mode, builds and uploads: one stacked mark each, coloured by package.
+            timingLane = LoggerUi.Box("lg-timeline__lane");
+            timingLane.generateVisualContent += DrawLane;
+            timingLane.RegisterCallback<PointerMoveEvent>(evt => SetLaneHover(LaneMarkAt(evt.localPosition.x)));
+            timingLane.RegisterCallback<PointerLeaveEvent>(_ => SetLaneHover(-1));
+            timingLane.RegisterCallback<PointerDownEvent>(evt =>
+            {
+                int index = LaneMarkAt(evt.localPosition.x);
+                if (evt.button == 0 && index >= 0 && index < timingEntries.Count)
+                {
+                    TimingClicked?.Invoke(timingEntries[index].Message);
+                    evt.StopPropagation();
+                }
+            });
+            timingLane.style.display = DisplayStyle.None;
+            Add(timingLane);
 
             var axis = LoggerUi.Box("lg-timeline__axis", PickingMode.Ignore);
             startLabel = LoggerUi.Text(string.Empty, "lg-timeline__label");
@@ -329,11 +347,7 @@ namespace Orbiters.Logger.Editor
             axis.Add(endLabel);
             Add(axis);
 
-            tip = LoggerUi.Text(string.Empty, "lg-chart-tip");
-            tip.pickingMode = PickingMode.Ignore;
-            tip.enableRichText = true;
-            tip.style.display = DisplayStyle.None;
-            Add(tip);
+            tip = new FloatingTip(this);
 
             emptyLabel = LoggerUi.Text("Activity over the session shows here", "lg-timeline__empty");
             emptyLabel.pickingMode = PickingMode.Ignore;
@@ -351,14 +365,44 @@ namespace Orbiters.Logger.Editor
             });
         }
 
+        /// <summary>Marks a moment on the chart (an undo step being hovered), or nothing with 0.</summary>
+        public void SetHighlight(long utcTicks)
+        {
+            if (utcTicks == highlight)
+            {
+                return;
+            }
+
+            highlight = utcTicks;
+            plot.MarkDirtyRepaint();
+        }
+
         /// <summary>Width of the plot in pixels: decides how many buckets the filter computes.</summary>
         public float PlotWidth => float.IsNaN(plot.layout.width) ? 0f : plot.layout.width;
 
-        public void Set(FilterState filter, IReadOnlyList<SessionEvent> sessionEvents, TimelineMarker[] projectMarkers, long from, long to)
+        public void Set(FilterState filter, IReadOnlyList<SessionEvent> sessionEvents, TimelineMarker[] projectMarkers,
+            IReadOnlyList<TimingEntry> timingMarks, long from, long to)
         {
             state = filter;
             events = sessionEvents ?? new SessionEvent[0];
             markers = projectMarkers ?? new TimelineMarker[0];
+            timingEntries = timingMarks ?? new TimingEntry[0];
+            bool lane = false;
+            if (state != null && state.HasTimeline)
+            {
+                foreach (var entry in timingEntries)
+                {
+                    if (entry.Time >= state.ChartFrom && entry.Time <= state.ChartTo)
+                    {
+                        lane = true;
+                        break;
+                    }
+                }
+            }
+
+            timingLane.style.display = lane ? DisplayStyle.Flex : DisplayStyle.None;
+            EnableInClassList("lg-timeline--lane", lane);
+            timingLane.MarkDirtyRepaint();
             LayoutMarkerLabels();
             rangeFrom = from;
             rangeTo = to;
@@ -502,7 +546,7 @@ namespace Orbiters.Logger.Editor
         {
             if (hover < 0 || state == null || !state.HasTimeline)
             {
-                tip.style.display = DisplayStyle.None;
+                tip.Hide();
                 return;
             }
 
@@ -574,12 +618,8 @@ namespace Orbiters.Logger.Editor
                 text.Append("\n<color=#8a8a8a>+").Append(more).Append(" more</color>");
             }
 
-            tip.text = text.ToString();
-            tip.style.display = DisplayStyle.Flex;
             float x = PlotWidth * (hover + 0.5f) / buckets;
-            bool right = x > PlotWidth * 0.62f;
-            tip.style.left = right ? StyleKeyword.Auto : new StyleLength(x + 10f + plot.layout.x);
-            tip.style.right = right ? new StyleLength(layout.width - (x + plot.layout.x) + 10f) : StyleKeyword.Auto;
+            tip.Show(text.ToString(), x + plot.layout.x, 6f);
         }
 
         private void Draw(MeshGenerationContext context)
@@ -669,6 +709,13 @@ namespace Orbiters.Logger.Editor
                     }
                 }
 
+                if (highlight > 0 && highlight >= state.ChartFrom && highlight <= state.ChartTo)
+                {
+                    float x = XOf(highlight);
+                    batch.Rect(x - 1f, 0, 2f, height, new Color(1f, 1f, 1f, 0.75f));
+                    batch.Rect(x - 4f, 0, 8f, 3f, Color.white);
+                }
+
                 if (ranged)
                 {
                     batch.Rect(rangeA, 0, Math.Max(1f, rangeB - rangeA), height, new Color(0f, 0.85f, 0.43f, 0.10f));
@@ -752,6 +799,127 @@ namespace Orbiters.Logger.Editor
                 label.style.left = left;
                 markerLabels.Add(label);
             }
+        }
+
+        private void DrawLane(MeshGenerationContext context)
+        {
+            laneMarks.Clear();
+            var rect = timingLane.contentRect;
+            if (state == null || !state.HasTimeline || rect.width <= 0f || rect.height <= 0f)
+            {
+                return;
+            }
+
+            double slowest = 1d;
+            foreach (var entry in timingEntries)
+            {
+                if (entry.Time >= state.ChartFrom && entry.Time <= state.ChartTo)
+                {
+                    slowest = Math.Max(slowest, entry.Profile.TotalMilliseconds);
+                }
+            }
+
+            float height = rect.height;
+            laneBatch.Rect(0f, height - 1f, rect.width, 1f, ChartColors.Grid);
+            for (int i = 0; i < timingEntries.Count; i++)
+            {
+                var entry = timingEntries[i];
+                if (entry.Time < state.ChartFrom || entry.Time > state.ChartTo)
+                {
+                    continue;
+                }
+
+                float x = XOf(entry.Time);
+                laneMarks.Add((x, i));
+                var profile = entry.Profile;
+                bool hovered = i == laneHover;
+                float width = hovered ? 6f : 4f;
+                float column = Math.Max(3f, (float)(0.3d + 0.7d * profile.TotalMilliseconds / slowest) * (height - 3f));
+                float bottom = height - 1f;
+                float alpha = laneHover < 0 || hovered ? 1f : 0.5f;
+                double total = Math.Max(1d, profile.TotalMilliseconds);
+                // Packages from the bottom, the engine's part on top.
+                TimingShare engine = null;
+                foreach (var share in profile.Shares)
+                {
+                    if (share.Source == TimingProfile.UnitySource)
+                    {
+                        engine = share;
+                        continue;
+                    }
+
+                    float h = (float)(share.Milliseconds / total) * column;
+                    if (h < 0.4f)
+                    {
+                        continue;
+                    }
+
+                    var color = TimingColors.For(share.Source);
+                    laneBatch.Rect(x - width * 0.5f, bottom - h, width, h, new Color(color.r, color.g, color.b, alpha));
+                    bottom -= h;
+                }
+
+                if (engine != null)
+                {
+                    float h = (float)(engine.Milliseconds / total) * column;
+                    laneBatch.Rect(x - width * 0.5f, bottom - h, width, h, new Color(TimingColors.Unity.r, TimingColors.Unity.g, TimingColors.Unity.b, alpha));
+                    bottom -= h;
+                }
+
+                var kind = TimingColors.Kind(profile.Kind);
+                laneBatch.Rect(x - width * 0.5f, bottom - 2f, width, 2f, new Color(kind.r, kind.g, kind.b, alpha));
+            }
+
+            laneBatch.Flush(context);
+        }
+
+        private int LaneMarkAt(float x)
+        {
+            int best = -1;
+            float bestDistance = 7f;
+            foreach (var (markX, index) in laneMarks)
+            {
+                float distance = Mathf.Abs(markX - x);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = index;
+                }
+            }
+
+            return best;
+        }
+
+        private void SetLaneHover(int index)
+        {
+            if (index == laneHover)
+            {
+                return;
+            }
+
+            laneHover = index;
+            timingLane.MarkDirtyRepaint();
+            if (index < 0 || index >= timingEntries.Count)
+            {
+                if (hover < 0)
+                {
+                    tip.Hide();
+                }
+
+                return;
+            }
+
+            var entry = timingEntries[index];
+            var text = new System.Text.StringBuilder();
+            text.Append("<b>").Append(RichText.Literal(entry.Profile.Message())).Append("</b>  <color=#8a8a8a>").Append(LoggerUi.Time(entry.Time, false)).Append("</color>");
+            string legend = TimingStrip.Legend(entry.Profile, 4);
+            if (legend.Length > 0)
+            {
+                text.Append('\n').Append(legend);
+            }
+
+            text.Append("\n<color=#6f6f6f>Click to show it</color>");
+            tip.Show(text.ToString(), XOf(entry.Time) + plot.layout.x, 6f);
         }
 
         private static string Shorten(string text, int max) => text.Length > max ? text.Substring(0, max) + "…" : text;

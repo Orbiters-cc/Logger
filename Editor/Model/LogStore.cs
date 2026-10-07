@@ -102,6 +102,8 @@ namespace Orbiters.Logger.Editor
     internal sealed class LogStore
     {
         public const int DefaultMaxOccurrences = 3_000_000;
+        /// <summary>The source of timing logs (script reloads, Play Mode, avatar builds and uploads).</summary>
+        public const string TimingSource = "Timings";
         public const OccurrenceFlags Superseded = (OccurrenceFlags)8;
 
         private long[] times;
@@ -257,6 +259,15 @@ namespace Orbiters.Logger.Editor
                 return;
             }
 
+            if (TimingProfile.IsTimings(stack))
+            {
+                // A timing log: its largest shares under the message.
+                message.Source = Sources.Get(TimingSource);
+                var profile = TimingProfile.Parse(stack);
+                message.Callsite = Texts.Intern(profile != null ? profile.Summary(4) : string.Empty);
+                return;
+            }
+
             if (StackTraces.IsOutput(stack))
             {
                 // A command's log: its timing line under the message.
@@ -287,6 +298,12 @@ namespace Orbiters.Logger.Editor
             else if (!string.IsNullOrEmpty(file))
             {
                 string path = StackTraces.NormalizePath(file);
+                if (message.Source == SourceCatalog.Unity)
+                {
+                    // Unity cut the stack trace ("<message truncated>"): the file its console names says who logged it.
+                    message.Source = Sources.ForFile(path);
+                }
+
                 message.File = Texts.Intern(path);
                 message.Line = line;
                 message.Callsite = Texts.Intern(StackTraces.FileName(path) + (line > 0 ? ":" + line : string.Empty));

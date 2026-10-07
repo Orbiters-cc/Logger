@@ -128,6 +128,7 @@ namespace Orbiters.Logger.Editor
             { "refit", Hex("#3cf29a") },
             { "xray gizmos", Hex("#3cf29a") },
             { "logger", Hex("#3cf29a") },
+            { "timings", Hex("#f2c46d") },
         };
 
         private static Dictionary<string, string> registeredPackages;
@@ -191,6 +192,14 @@ namespace Orbiters.Logger.Editor
                 return Compiler;
             }
 
+            // An importer's message about an asset ("Packages/x/y.uss (line 27): …") belongs to that asset's package,
+            // not to the code that happened to start the import.
+            string asset = LeadingAssetPath(condition);
+            if (asset != null)
+            {
+                return FromFile(asset);
+            }
+
             // The frame that logged it, else any frame with a source file, else the first frame's namespace.
             if (callsite >= 0 && callsite < frames.Count && frames[callsite].HasFile)
             {
@@ -216,6 +225,36 @@ namespace Orbiters.Logger.Editor
 
             int byTag = FromTag(condition);
             return byTag >= 0 ? byTag : Unity;
+        }
+
+        /// <summary>The source of a project file (for logs whose stack trace was cut, by the file Unity's console names).</summary>
+        public int ForFile(string file) => string.IsNullOrEmpty(file) ? Unity : FromFile(file);
+
+        // "Packages/orbiters.toolkit/Editor/UI/orbit-sphere.uss (line 27): warning: …" → that path.
+        internal static string LeadingAssetPath(string condition)
+        {
+            if (string.IsNullOrEmpty(condition) ||
+                !(condition.StartsWith("Assets/", StringComparison.Ordinal) || condition.StartsWith("Packages/", StringComparison.Ordinal)))
+            {
+                return null;
+            }
+
+            int end = 0;
+            while (end < condition.Length && end < 400)
+            {
+                char c = condition[end];
+                if (c == '\n' || c == '(' || c == ':' || c == ' ' && end + 1 < condition.Length && condition[end + 1] == '(')
+                {
+                    break;
+                }
+
+                end++;
+            }
+
+            string path = condition.Substring(0, end).TrimEnd();
+            int slash = path.LastIndexOf('/');
+            int dot = path.LastIndexOf('.');
+            return dot > slash && slash > 0 && dot < path.Length - 1 ? path : null;
         }
 
         private int FromFile(string file)
@@ -302,6 +341,69 @@ namespace Orbiters.Logger.Editor
             return -1;
         }
 
+        /// <summary>
+        /// The source name of a file of the project or of a package: "Packages/com.vrcfury.vrcfury/…" and
+        /// "Library/PackageCache/com.vrcfury.vrcfury@…/…" → "VRCFury", "Assets/VRCFury/…" → "VRCFury", other Assets
+        /// folders → "Assets/Folder". Null for files outside the project.
+        /// </summary>
+        internal static string NameForPath(string path)
+        {
+            // Package cache paths come out of NormalizePath as Packages/<name>/…
+            string normalized = StackTraces.NormalizePath(path);
+            if (string.IsNullOrEmpty(normalized))
+            {
+                return null;
+            }
+
+            int slash = normalized.IndexOf('/');
+            if (slash <= 0)
+            {
+                return null;
+            }
+
+            string root = normalized.Substring(0, slash);
+            int second = normalized.IndexOf('/', slash + 1);
+            string folder = second > slash ? normalized.Substring(slash + 1, second - slash - 1) : string.Empty;
+            if (root.Equals("Packages", StringComparison.OrdinalIgnoreCase) && folder.Length > 0)
+            {
+                return PackageDisplayName(folder);
+            }
+
+            if (root.Equals("Assets", StringComparison.OrdinalIgnoreCase))
+            {
+                if (folder.Length == 0)
+                {
+                    return "Project";
+                }
+
+                return AssetFolders.TryGetValue(folder, out string known) ? known : "Assets/" + folder;
+            }
+
+            return null;
+        }
+
+        /// <summary>The source name of a package ("com.vrcfury.vrcfury" → "VRCFury").</summary>
+        internal static string NameForPackage(string package) => string.IsNullOrEmpty(package) ? null : PackageDisplayName(package);
+
+        /// <summary>The source a namespace belongs to ("VF.Hooks.VFInitHook" → "VRCFury"), or null.</summary>
+        internal static string NameForNamespace(string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName))
+            {
+                return null;
+            }
+
+            foreach (var (prefix, name) in Namespaces)
+            {
+                if (typeName.StartsWith(prefix, StringComparison.Ordinal))
+                {
+                    return name;
+                }
+            }
+
+            return null;
+        }
+
         private static string PackageDisplayName(string package)
         {
             if (PackageNames.TryGetValue(package, out string known))
@@ -336,7 +438,7 @@ namespace Orbiters.Logger.Editor
             return registeredPackages.TryGetValue(package, out string display) ? display : package;
         }
 
-        private static Color ColorFor(string key)
+        internal static Color ColorFor(string key)
         {
             if (KnownColors.TryGetValue(key, out var known))
             {

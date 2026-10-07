@@ -1,5 +1,25 @@
 # Logger
 
+## 0.2.0 — 2026-10-07
+
+- **Timings**: every script reload, entry into Play Mode and avatar build or upload is logged with what each package
+  took, as a stacked bar in the list, a breakdown by package in the details (click a package for its parts) with the
+  same timing over the session, and a mark per package on the timeline's new lane. Reloads are read from Unity's own
+  reload profile (its `EnableDomainReloadTimings` diagnostic switch is turned on for that, and its console notice about
+  it hidden); builds and Play Mode time each tool's VRChat SDK build step. Each can be turned off in the settings.
+- **Since which commit**: a message that keeps coming back shows when it was first seen (across editor sessions and
+  clears) and the commit the project was at then, from Git's own history of HEAD, with how many commits ago.
+- **Explanations** for every message of a real creator session: 311 entries (VRCFury, MCB, ReFit, Unit Git, MCP for
+  Unity, Unity…), kept in `Editor/Knowledge/explanations.json` and kept up to date from the Orbiters server between
+  releases (members signed in through Orbiters Toolkit also get the entries for members). Entries have a priority, so a
+  tool's catch-all never hides a specific explanation.
+- **Undo history timeline (beta, off by default)**: your undo steps under the activity chart with a snapshot of the
+  Scene view after each; hover to preview, click or drag to go back and forth, scroll for one step.
+- Hover read-outs of the charts draw above everything (they were hidden behind the rows under them).
+- Importer messages that start with an asset path ("Packages/x/y.uss (line 27): …") belong to that asset's package, and
+  logs whose stack trace Unity cut take their source from the file Unity's console names.
+- "Unused code warning" no longer explains CS0108, CS0114 and CS0162.
+
 ## 0.1.2 — 2026-10-07
 
 - Commits and releases on the timeline carry a small label.
@@ -84,9 +104,50 @@ The sliders button opens the settings:
 - **Compact rows**: one line per log. **Monospace font** for messages.
 - **Memory**: how many logs to keep (250K to 6M, 3M by default); the oldest fifth goes when the limit is reached.
 - **Unity's console**: open it, or read it again from scratch.
+- **Timings**: measure script reloads, entering Play Mode, and avatar builds and uploads (all on by default).
+- **Beta**: the undo history timeline.
 
 **Clear** (Ctrl+L) empties the Logger and Unity's console. Compile errors that still stand stay, as in Unity.
 Clearing Unity's console from its own window doesn't clear the Logger.
+
+## Timings
+
+Each script reload, entry into Play Mode and avatar build or upload becomes a log under the **Timings** source:
+"Script reload took 6.6 s", "Entered Play Mode in 9.1 s", "Built and uploaded Rexouium in 2 min 13 s". Its row shows the
+time as a stacked bar, one colour per package (the engine's part in grey at the end), scaled to the slowest of its
+kind so rows compare at a glance. The details show the total, how it compares with the usual time, each package's
+share (click one for its parts: which startup method, which build step) and the same kind of timing over the session
+as stacked columns: when a package suddenly costs more, it shows. The timeline has a lane with one mark per timing,
+stacked by package; click a mark to show its log.
+
+- **Script reloads**: Unity writes a "Domain Reload Profiling" tree to Editor.log after each reload. With its
+  `EnableDomainReloadTimings` diagnostic switch on (the Logger turns it on while reloads are measured, and back off when
+  you turn measuring off) the tree lists every type and method that runs on load, every before/after-reload callback
+  and every window restored; the Logger reads it back on a worker thread and gives each entry to the package its code
+  belongs to. Unity's console notice about the switch is hidden while it is the only one on.
+- **Avatar builds and uploads** (VRChat SDK, through the optional `Orbiters.Logger.Editor.VRChat` assembly): from
+  Build & Publish or Build & Test to the end of the upload. A probe sits in front of each group of build steps in the
+  SDK's list, so each tool's step (VRCFury, MCB, My Avatar, ReFit, Orbiters Toolkit, the SDK's own…) is timed without
+  touching it, then the asset bundle and the upload.
+- **Entering Play Mode**: leaving Edit Mode, the script reload by package, the avatar build steps VRCFury runs on each
+  avatar of the scene (merged across avatars), then the scene load and first frames.
+
+## Since which commit
+
+For a message that keeps coming back, the details show **Appearing since**: the commit the project was at when it was
+first seen, its subject, when that was and how many commits ago. First and last appearances are kept per message in
+`Library/Orbiters/Logger/ledger.bin` (across editor sessions and clears, up to 100,000 messages); the commit comes
+from Git's own history of HEAD (`.git/logs/HEAD`), so no Git process runs. Click the hash to copy it.
+
+## Undo history timeline (beta)
+
+Off by default: turn on **Undo history timeline** in the settings. A strip under the activity chart shows Unity's
+undo steps (Edit › Undo History) like a video's progress bar: one tick per step (selections smaller), the part already
+done filled, the playhead where the project is. Hover a step for a snapshot of the Scene view right after it, its
+name and when it happened (its moment is also marked on the activity chart). Click or drag to go there: the Logger
+undoes or redoes one step at a time until the project is as it was right after that step. Scroll over the strip for
+one step back or forward. Snapshots are read from the Scene view window's own framebuffer when it is the visible tab
+(no extra render), scaled down on the GPU and kept as small JPEGs (the last 600).
 
 ## How it works
 
@@ -151,3 +212,17 @@ static class MyToolExplanations
 
 Registered explanations are tried before the built-in ones. Reference the `Orbiters.Logger.Editor` assembly through
 a version define so your tool still compiles without the Logger.
+
+### The explanation database
+
+The Logger's own explanations are in `Editor/Knowledge/explanations.json` (`{ "explanations": [ … ] }`), one object per
+entry: `id`, `needle` (text the message must contain, checked first), optional `pattern` (.NET regex with named
+groups for `{name}` placeholders), `stackNeedle`, `levels` (`error`, `warning`, `log`), `priority` (catch-alls use
+negative values), `severity` (`harmless`, `info`, `warning`, `problem`, `blocking`), `source`, `title`, `summary`,
+`fixes`, `link`, `linkLabel`. Entries tied to a stack trace are tried first, then by priority, then in file order.
+
+The same list lives on the Orbiters server (`GET /logger/explanations`, with `If-None-Match`), where it is updated
+between releases: the Logger asks for it every six hours, keeps the last answer per user in
+`%LOCALAPPDATA%/Orbiters/Logger/`, and server entries replace local ones with the same id. With Orbiters Toolkit
+installed (optional `Orbiters.Logger.Editor.Toolkit` assembly), it asks the server Orbiters tools use, as the
+signed-in member.

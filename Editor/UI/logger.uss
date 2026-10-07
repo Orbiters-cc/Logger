@@ -806,6 +806,7 @@
     --icon-color: #9adbb8;
 }
 
+/* Hover read-outs live in the window's root (FloatingTip), above every pane. */
 .lg-chart-tip {
     position: absolute;
     top: 6px;
@@ -1778,10 +1779,6 @@
     background-color: rgba(0, 0, 0, 0.14);
 }
 
-.lg-frequency .lg-chart-tip {
-    top: 4px;
-}
-
 .lg-stats {
     flex-direction: row;
     flex-wrap: wrap;
@@ -2363,4 +2360,458 @@
 .lg-timeline__marker--release {
     background-color: rgba(70, 52, 18, 0.95);
     color: #ffd27a;
+}
+
+/* ---- Timings: reloads, Play Mode, avatar builds and uploads ---------------------------------------- */
+
+.lg-timeline--lane {
+    height: 92px;
+    min-height: 92px;
+}
+
+.lg-timeline__lane {
+    height: 15px;
+    min-height: 15px;
+    margin-top: 3px;
+    border-radius: 4px;
+    background-color: rgba(0, 0, 0, 0.12);
+    cursor: link;
+}
+
+.lg-row--timing .lg-row__icon {
+    --icon-color: #f2c46d;
+}
+
+.lg-row__timing {
+    height: 13px;
+    margin-top: 3px;
+}
+
+.lg-root--compact .lg-row__timing {
+    display: none;
+}
+
+.lg-timing-strip {
+    flex-shrink: 0;
+}
+
+.lg-timing-strip__legend {
+    position: absolute;
+    top: -2px;
+    right: 0;
+    height: 17px;
+    color: #8a8a8a;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -unity-text-align: middle-left;
+}
+
+.lg-row__count--timing {
+    display: flex;
+    background-color: rgba(242, 196, 109, 0.13);
+    color: #f5d08a;
+}
+
+.lg-details--timing .lg-details__icon {
+    --icon-color: #f2c46d;
+}
+
+.lg-timing__head {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.lg-timing__total {
+    font-size: 26px;
+    -unity-font-style: bold;
+    margin-right: 12px;
+    -unity-text-align: middle-left;
+}
+
+.lg-timing__titles {
+    flex-shrink: 1;
+    min-width: 0;
+    align-items: flex-start;
+}
+
+.lg-timing__title {
+    color: #d8d8d8;
+    font-size: 13px;
+    white-space: normal;
+}
+
+.lg-timing__trend {
+    margin-top: 4px;
+    height: 18px;
+    padding: 0 8px;
+    border-radius: 9px;
+    background-color: rgba(255, 255, 255, 0.07);
+    color: #b5b5b5;
+    font-size: 10px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.lg-timing__trend--slower {
+    background-color: rgba(255, 107, 107, 0.15);
+    color: #ff9a9a;
+}
+
+.lg-timing__trend--faster {
+    background-color: rgba(0, 218, 109, 0.14);
+    color: #6ff0ae;
+}
+
+.lg-timing__outcome {
+    margin: -4px 0 10px 0;
+    color: #ff9a9a;
+    font-size: 11px;
+    white-space: normal;
+}
+
+.lg-timing__strip {
+    height: 18px;
+    margin-bottom: 12px;
+}
+
+.lg-timing__note {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.lg-timing__note .lg-details__note {
+    margin: 0 10px 0 0;
+}
+
+.lg-shares {
+    margin: 0 -6px;
+}
+
+.lg-share {
+    border-radius: 8px;
+}
+
+.lg-share--open {
+    background-color: rgba(255, 255, 255, 0.025);
+}
+
+.lg-share__header {
+    height: 28px;
+    margin: 0;
+    padding: 0 6px;
+    flex-direction: row;
+    align-items: center;
+    border-width: 0;
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0);
+    background-image: none;
+    transition-property: background-color;
+    transition-duration: 0.12s;
+}
+
+.lg-share__header:hover {
+    background-color: var(--lg-hover);
+}
+
+.lg-share__header.lg-pressed {
+    background-color: var(--lg-press);
+}
+
+.lg-share__source {
+    height: 18px;
+    width: 128px;
+    min-width: 0;
+    flex-shrink: 0;
+    padding: 0 8px;
+    margin-right: 10px;
+    border-radius: 9px;
+    font-size: 10px;
+    -unity-font-style: bold;
+    justify-content: flex-start;
+}
+
+.lg-share__track {
+    flex-grow: 1;
+    height: 6px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.lg-share__fill {
+    height: 100%;
+    border-radius: 3px;
+}
+
+.lg-share--engine .lg-share__fill {
+    opacity: 0.8;
+}
+
+.lg-share__duration {
+    width: 64px;
+    color: #e6e6e6;
+    font-size: 12px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-right;
+}
+
+.lg-share__percent {
+    width: 38px;
+    color: #7c7c7c;
+    font-size: 11px;
+    -unity-text-align: middle-right;
+}
+
+.lg-share--engine .lg-share__duration {
+    color: #a8a8a8;
+}
+
+.lg-share__chevron {
+    width: 14px;
+    height: 14px;
+    margin-left: 6px;
+    --icon-color: #7c7c7c;
+    rotate: -90deg;
+    transition-property: rotate;
+    transition-duration: 0.16s;
+}
+
+.lg-share--open .lg-share__chevron {
+    rotate: 0deg;
+}
+
+.lg-share__parts {
+    padding: 0 8px 8px 16px;
+}
+
+.lg-share__part {
+    flex-direction: row;
+    align-items: center;
+    height: 20px;
+}
+
+.lg-share__phase {
+    width: 132px;
+    flex-shrink: 0;
+    color: #7c7c7c;
+    font-size: 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lg-share__label {
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-width: 0;
+    color: #cfcfcf;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lg-share__part-duration {
+    width: 64px;
+    flex-shrink: 0;
+    color: #a8a8a8;
+    font-size: 11px;
+    -unity-text-align: middle-right;
+    margin-right: 58px;
+}
+
+.lg-share__more {
+    color: #6f6f6f;
+    font-size: 10px;
+    margin-top: 2px;
+}
+
+.lg-timing-history {
+    height: 96px;
+    margin-bottom: 8px;
+}
+
+.lg-timing-legend {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+
+.lg-timing-legend__item {
+    flex-direction: row;
+    align-items: center;
+    margin: 0 10px 4px 0;
+}
+
+.lg-timing-legend__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    margin-right: 5px;
+}
+
+.lg-timing-legend__name {
+    color: #a8a8a8;
+    font-size: 10px;
+}
+
+/* ---- Appearing since: the commit a recurring log started with --------------------------------------- */
+
+.lg-since__row {
+    flex-direction: row;
+    align-items: center;
+    min-width: 0;
+}
+
+.lg-since__icon {
+    width: 16px;
+    height: 16px;
+    margin-right: 7px;
+    --icon-color: #8fb6ff;
+    --icon-width: 2;
+}
+
+.lg-since__hash {
+    height: 20px;
+    margin: 0 8px 0 0;
+    padding: 0 7px;
+    border-width: 0;
+    border-radius: 6px;
+    background-color: rgba(106, 167, 255, 0.14);
+    background-image: none;
+    flex-shrink: 0;
+    scale: 1 1;
+    transition-property: background-color, scale;
+    transition-duration: 0.12s, 0.16s;
+    transition-timing-function: ease-out, ease-out-back;
+}
+
+.lg-since__hash:hover {
+    background-color: rgba(106, 167, 255, 0.24);
+}
+
+.lg-since__hash.lg-pressed {
+    scale: 0.94 0.94;
+}
+
+.lg-since__hash-label {
+    color: #a9c8ff;
+    font-size: 11px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.lg-since__subject {
+    flex-shrink: 1;
+    min-width: 0;
+    color: #e6e6e6;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lg-since__meta {
+    margin-top: 6px;
+    color: var(--lg-text-3);
+    font-size: 11px;
+    white-space: normal;
+}
+
+/* ---- Undo history timeline (beta) ------------------------------------------------------------------- */
+
+.lg-undo {
+    height: 30px;
+    min-height: 30px;
+    flex-shrink: 0;
+    flex-direction: row;
+    align-items: center;
+    padding: 2px 12px 6px 12px;
+    background-color: var(--lg-surface);
+    border-bottom-width: 1px;
+    border-bottom-color: var(--lg-line);
+}
+
+.lg-undo__icon {
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    --icon-color: #3cf29a;
+    --icon-width: 2.1;
+}
+
+.lg-undo__strip {
+    flex-grow: 1;
+    height: 20px;
+    border-radius: 5px;
+    background-color: rgba(0, 0, 0, 0.14);
+    overflow: hidden;
+    cursor: resize-horizontal;
+}
+
+.lg-undo__count {
+    min-width: 112px;
+    margin-left: 10px;
+    color: var(--lg-text-3);
+    font-size: 10px;
+    -unity-text-align: middle-right;
+    white-space: nowrap;
+}
+
+.lg-undo-card {
+    position: absolute;
+    width: 216px;
+    padding: 8px;
+    border-radius: 12px;
+    background-color: rgba(24, 24, 24, 0.97);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.lg-undo-card__image {
+    width: 200px;
+    height: 124px;
+    border-radius: 8px;
+    background-color: #1b1b1b;
+    overflow: hidden;
+    justify-content: center;
+    align-items: center;
+}
+
+.lg-undo-card__empty {
+    color: #6f6f6f;
+    font-size: 10px;
+    -unity-text-align: middle-center;
+}
+
+.lg-undo-card__name {
+    margin-top: 7px;
+    color: #f0f0f0;
+    font-size: 12px;
+    -unity-font-style: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.lg-undo-card__meta {
+    margin-top: 1px;
+    color: #8a8a8a;
+    font-size: 10px;
+}
+
+.lg-undo-card__hint {
+    margin-top: 4px;
+    color: #6ff0ae;
+    font-size: 10px;
+    -unity-font-style: bold;
+}
+
+.lg-undo-card--now .lg-undo-card__hint {
+    color: #e6e6e6;
 }

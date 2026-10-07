@@ -1,0 +1,29 @@
+{
+  "name": "Orbiters.Logger.Editor.VRChat",
+  "rootNamespace": "Orbiters.Logger.Editor.VRChat",
+  "references": [
+    "Orbiters.Logger.Editor",
+    "VRC.SDKBase",
+    "VRC.SDKBase.Editor",
+    "VRC.SDK3A.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "defineConstraints": [
+    "LOGGER_VRCSDK"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.vrchat.avatars",
+      "expression": "3.5.0",
+      "define": "LOGGER_VRCSDK"
+    }
+  ],
+  "noEngineReferences": false
+}

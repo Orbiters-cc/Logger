@@ -219,6 +219,7 @@ namespace Orbiters.Logger.Editor
             timeline = new TimelineView();
             timeline.RangeSelected += SetRange;
             timeline.TimeClicked += JumpToTime;
+            timeline.TimingClicked += SelectTimingLog;
             timeline.RegisterCallback<GeometryChangedEvent>(evt =>
             {
                 if (Math.Abs(evt.oldRect.width - evt.newRect.width) > 24f)
@@ -344,7 +345,7 @@ namespace Orbiters.Logger.Editor
                 footerProgressFill.style.width = Length.Percent(Mathf.Clamp01(history.Progress) * 100f);
             }
 
-            timeline.Set(state, store?.Events, TimelineMarkers.All, rangeFrom, rangeTo);
+            timeline.Set(state, store?.Events, TimelineMarkers.All, timings.Entries, rangeFrom, rangeTo);
             UpdateListChrome();
 
             if (store == null || state == null)

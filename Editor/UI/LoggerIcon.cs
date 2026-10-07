@@ -36,7 +36,13 @@ namespace Orbiters.Logger.Editor
         Clock,
         External,
         Thread,
-        Pause
+        Pause,
+        Stopwatch,
+        Commit,
+        Upload,
+        Undo,
+        Redo,
+        Cloud
     }
 
     /// <summary>
@@ -353,6 +359,50 @@ namespace Orbiters.Logger.Editor
                     Line(P(10f, 5f), P(5f, 5f), P(5f, 19f), P(19f, 19f), P(19f, 14f));
                     Line(P(12f, 12f), P(19.5f, 4.5f));
                     Line(P(14f, 4.5f), P(19.5f, 4.5f), P(19.5f, 10f));
+                    break;
+                case LoggerGlyph.Stopwatch:
+                    Circle(12f, 13.5f, 7.5f);
+                    Line(P(12f, 13.5f), P(12f, 9.5f));
+                    Line(P(10f, 3f), P(14f, 3f));
+                    Line(P(12f, 3f), P(12f, 6f));
+                    Line(P(18.2f, 6.6f), P(19.6f, 5.2f));
+                    break;
+                case LoggerGlyph.Commit:
+                    Circle(12f, 12f, 4f);
+                    Line(P(2.5f, 12f), P(8f, 12f));
+                    Line(P(16f, 12f), P(21.5f, 12f));
+                    break;
+                case LoggerGlyph.Upload:
+                    Line(P(12f, 15.5f), P(12f, 4f));
+                    Line(P(7f, 9f), P(12f, 4f), P(17f, 9f));
+                    Line(P(4.5f, 15f), P(4.5f, 19.5f), P(19.5f, 19.5f), P(19.5f, 15f));
+                    break;
+                case LoggerGlyph.Undo:
+                case LoggerGlyph.Redo:
+                {
+                    bool undo = glyph == LoggerGlyph.Undo;
+                    float m = undo ? 1f : -1f;
+                    float cx = 12f;
+                    Vector2 Q(float x, float y) => P(cx + (x - cx) * m, y);
+                    p.BeginPath();
+                    p.MoveTo(Q(5f, 10f));
+                    p.LineTo(Q(14.5f, 10f));
+                    p.BezierCurveTo(Q(18.5f, 10f), Q(20.5f, 12.5f), Q(20.5f, 15f));
+                    p.BezierCurveTo(Q(20.5f, 17.5f), Q(18.5f, 20f), Q(14.5f, 20f));
+                    p.LineTo(Q(9f, 20f));
+                    p.Stroke();
+                    Line(Q(9f, 6f), Q(5f, 10f), Q(9f, 14f));
+                    break;
+                }
+                case LoggerGlyph.Cloud:
+                    p.BeginPath();
+                    p.MoveTo(P(7f, 18.5f));
+                    p.BezierCurveTo(P(3.5f, 18.5f), P(2.5f, 13.5f), P(6.5f, 12.5f));
+                    p.BezierCurveTo(P(6.5f, 7f), P(13.5f, 5f), P(15.5f, 9.5f));
+                    p.BezierCurveTo(P(19.5f, 8.5f), P(22.5f, 13f), P(19.5f, 16f));
+                    p.BezierCurveTo(P(19f, 17.8f), P(18f, 18.5f), P(16.5f, 18.5f));
+                    p.ClosePath();
+                    p.Stroke();
                     break;
                 case LoggerGlyph.Thread:
                     Line(P(4f, 7f), P(13f, 7f));

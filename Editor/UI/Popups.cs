@@ -237,7 +237,7 @@ namespace Orbiters.Logger.Editor
             UnityEditor.PopupWindow.Show(rect, new SettingsPopup(window));
         }
 
-        public override Vector2 GetWindowSize() => new Vector2(340f, 470f);
+        public override Vector2 GetWindowSize() => new Vector2(340f, 560f);
 
         protected override void Build(VisualElement root)
         {
@@ -259,6 +259,18 @@ namespace Orbiters.Logger.Editor
                 on => LogCapture.SetGrouping(on ? GroupingMode.SimilarText : GroupingMode.SameText)));
             body.Add(Switch("Compact rows", "One line per log, without the line it was logged from.", () => window.IsCompact, window.SetCompact));
             body.Add(Switch("Monospace font", "Messages in a fixed-width font, like code.", () => window.IsMonospace, window.SetMonospace));
+
+            body.Add(Section("Timings", "Logged as they happen, with each package's part."));
+            body.Add(Switch("Script reloads", "What each package costs at every reload. Turns on Unity's reload timing diagnostics.",
+                () => ReloadTimings.Enabled, on => ReloadTimings.Enabled = on));
+            body.Add(Switch("Entering Play Mode", "From the Play button to the first frames, with each tool's avatar build steps.",
+                () => PlayModeTimings.Enabled, on => PlayModeTimings.Enabled = on));
+            body.Add(Switch("Avatar builds and uploads", "Each tool's build steps, the asset bundle and the upload (VRChat SDK).",
+                () => EditorPrefs.GetBool(TimingSettings.AvatarUploadsPref, true), on => EditorPrefs.SetBool(TimingSettings.AvatarUploadsPref, on)));
+
+            body.Add(Section("Beta", null));
+            body.Add(Switch("Undo history timeline", "Your undo steps under the activity chart, with a Scene view snapshot of each. Click, drag or scroll it to go back and forth.",
+                () => UndoHistory.Enabled, on => UndoHistory.Enabled = on));
 
             body.Add(Section("Memory", "The oldest logs go first when the limit is reached."));
             var limits = LoggerUi.Box("lg-limits");

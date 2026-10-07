@@ -215,6 +215,13 @@ namespace Orbiters.Logger.Editor
             columns.Add(main);
             columns.Add(side);
             detailsBody.Add(columns);
+            detailsPane.EnableInClassList("lg-details--timing", false);
+            if (timings.TryGet(messageId, out var timing))
+            {
+                ShowTiming(store, messageId, occurrence, timing, main, side);
+                detailsScroll.scrollOffset = Vector2.zero;
+                return;
+            }
 
             // Message
             var messageCard = Card(main, null);
@@ -277,6 +284,9 @@ namespace Orbiters.Logger.Editor
                 }
             }
 
+            // Since when (and since which commit) it keeps appearing
+            BuildSince(side, store, message.Group, text);
+
             // Frequency
             var frequency = Card(side, "Frequency");
             frequency.AddToClassList("lg-card--frequency");
@@ -298,6 +308,62 @@ namespace Orbiters.Logger.Editor
             frequencyGroup = message.Group;
             RefreshFrequency(store, force: true);
             detailsScroll.scrollOffset = Vector2.zero;
+        }
+
+        // For a message that keeps coming back (several times, or in earlier sessions): when it was first seen and the
+        // commit the project was at then, from the ledger and Git's own history of HEAD.
+        private void BuildSince(VisualElement parent, LogStore store, int groupId, string text)
+        {
+            if (!LogLedger.TryGet(text, out var firstUtc, out _))
+            {
+                return;
+            }
+
+            var group = store.Group(groupId);
+            bool earlierSession = store.Count > 0 && firstUtc.Ticks < store.FirstTime - TimeSpan.TicksPerMinute;
+            if (group.Count < 2 && !earlierSession)
+            {
+                return;
+            }
+
+            var card = Card(parent, "Appearing since");
+            card.AddToClassList("lg-since");
+            var row = LoggerUi.Box("lg-since__row");
+            bool known = GitHistory.At(firstUtc, out var move, out int commitsSince);
+            if (known)
+            {
+                var icon = new LoggerIcon(LoggerGlyph.Commit);
+                icon.AddToClassList("lg-since__icon");
+                row.Add(icon);
+                var hash = new Button { tooltip = move.Hash + "\nClick to copy" };
+                hash.AddToClassList("lg-since__hash");
+                hash.Add(LoggerUi.Text(move.ShortHash, "lg-since__hash-label"));
+                string full = move.Hash;
+                LoggerUi.Press(hash, () =>
+                {
+                    EditorGUIUtility.systemCopyBuffer = full;
+                    ShowToast("Copied the commit hash");
+                });
+                row.Add(hash);
+                string subject = string.IsNullOrEmpty(move.Subject) ? move.Action : move.Subject;
+                var label = LoggerUi.Text(subject, "lg-since__subject");
+                label.tooltip = subject;
+                row.Add(label);
+            }
+            else
+            {
+                row.Add(LoggerUi.Text(GitHistory.Available ? "Before the Git history kept in this project" : "No Git history in this project",
+                    "lg-since__subject"));
+            }
+
+            card.Add(row);
+            string when = "First seen " + LoggerUi.Moment(firstUtc.Ticks) + "  ·  " + LoggerUi.Ago(firstUtc.Ticks);
+            if (known)
+            {
+                when += "  ·  " + (commitsSince == 0 ? "at the current commit" : LoggerUi.Plural(commitsSince, "commit") + " ago");
+            }
+
+            card.Add(LoggerUi.Text(when, "lg-since__meta"));
         }
 
         private VisualElement Card(VisualElement parent, string title)
@@ -538,6 +604,7 @@ namespace Orbiters.Logger.Editor
             detailsBody.Clear();
             detailsPane.EnableInClassList("lg-details--error", false);
             detailsPane.EnableInClassList("lg-details--warning", false);
+            detailsPane.EnableInClassList("lg-details--timing", false);
             detailsIcon.Glyph = LoggerGlyph.List;
             detailsKind.text = LoggerUi.Plural(count, grouped ? "message" : "log") + " selected";
             detailsSource.style.display = DisplayStyle.None;

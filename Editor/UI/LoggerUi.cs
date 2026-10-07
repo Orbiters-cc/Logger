@@ -266,6 +266,96 @@ namespace Orbiters.Logger.Editor
         internal static string ColorHex(Color color) => "#" + ColorUtility.ToHtmlStringRGB(color);
     }
 
+    /// <summary>
+    /// A chart's hover read-out, drawn above everything else of the window: it lives in the window's root (after every
+    /// pane), not in the chart, so rows or cards laid out after the chart can't cover it.
+    /// </summary>
+    internal sealed class FloatingTip
+    {
+        private readonly VisualElement owner;
+        private readonly Label label;
+
+        public FloatingTip(VisualElement owner)
+        {
+            this.owner = owner;
+            label = LoggerUi.Text(string.Empty, "lg-chart-tip");
+            label.AddToClassList("lg-floating-tip");
+            label.pickingMode = PickingMode.Ignore;
+            label.enableRichText = true;
+            label.style.display = DisplayStyle.None;
+            label.RegisterCallback<GeometryChangedEvent>(OnLaidOut);
+            owner.RegisterCallback<DetachFromPanelEvent>(_ =>
+            {
+                label.style.display = DisplayStyle.None;
+                label.RemoveFromHierarchy();
+            });
+        }
+
+        /// <summary>
+        /// Shows <paramref name="text"/> (rich text) at a point of the owner, in its local coordinates: to the right of
+        /// it, or to its left in the right part of the window.
+        /// </summary>
+        public void Show(string text, float localX, float localY)
+        {
+            var host = Host();
+            if (host == null)
+            {
+                return;
+            }
+
+            if (label.parent != host)
+            {
+                host.Add(label);
+            }
+            else if (host.IndexOf(label) != host.childCount - 1)
+            {
+                label.BringToFront();
+            }
+
+            label.text = text;
+            label.style.display = DisplayStyle.Flex;
+            anchor = host.WorldToLocal(owner.LocalToWorld(new Vector2(localX, localY)));
+            label.style.top = anchor.y;
+            Place(host, label.layout.width);
+        }
+
+        public void Hide() => label.style.display = DisplayStyle.None;
+
+        private Vector2 anchor;
+
+        // Right of the point when it fits in the window, else left of it; checked again once the text is laid out.
+        private void Place(VisualElement host, float tipWidth)
+        {
+            float width = float.IsNaN(host.layout.width) ? 0f : host.layout.width;
+            float measured = float.IsNaN(tipWidth) || tipWidth <= 0f ? 220f : tipWidth;
+            bool left = anchor.x + 10f + measured > width - 4f && anchor.x - 10f - measured >= 4f;
+            label.style.left = left ? StyleKeyword.Auto : new StyleLength(Mathf.Clamp(anchor.x + 10f, 4f, Mathf.Max(4f, width - measured - 4f)));
+            label.style.right = left ? new StyleLength(Mathf.Max(4f, width - anchor.x + 10f)) : StyleKeyword.Auto;
+        }
+
+        private void OnLaidOut(GeometryChangedEvent evt)
+        {
+            var host = label.parent;
+            if (host != null && label.resolvedStyle.display == DisplayStyle.Flex && Mathf.Abs(evt.oldRect.width - evt.newRect.width) > 0.5f)
+            {
+                Place(host, evt.newRect.width);
+            }
+        }
+
+        private VisualElement Host()
+        {
+            for (var element = owner; element != null; element = element.parent)
+            {
+                if (element.ClassListContains("lg-root"))
+                {
+                    return element;
+                }
+            }
+
+            return owner.panel?.visualTree;
+        }
+    }
+
     /// <summary>Two or three options in one rounded track; a highlight slides to the chosen one on press.</summary>
     internal sealed class SegmentedControl : VisualElement
     {

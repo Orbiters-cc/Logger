@@ -1,0 +1,27 @@
+{
+  "name": "Orbiters.Logger.Editor.Toolkit",
+  "rootNamespace": "Orbiters.Logger.Editor.Toolkit",
+  "references": [
+    "Orbiters.Logger.Editor",
+    "Orbiters.Toolkit"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "defineConstraints": [
+    "LOGGER_TOOLKIT"
+  ],
+  "versionDefines": [
+    {
+      "name": "orbiters.toolkit",
+      "expression": "0.3.0",
+      "define": "LOGGER_TOOLKIT"
+    }
+  ],
+  "noEngineReferences": false
+}

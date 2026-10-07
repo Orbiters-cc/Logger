@@ -43,6 +43,8 @@ namespace Orbiters.Logger.Editor
         public string StackNeedle { get; set; }
         /// <summary>Only logs of these levels match (all when null): "error", "warning", "log".</summary>
         public string[] Levels { get; set; }
+        /// <summary>Higher is tried first among explanations of the same kind; broad catch-alls use negative values.</summary>
+        public int Priority { get; set; }
         public string Summary { get; set; } = string.Empty;
         public string[] Fixes { get; set; } = Array.Empty<string>();
         /// <summary>Where the log comes from, as people know it ("VRChat SDK", "Unity", "C# compiler").</summary>
@@ -51,8 +53,33 @@ namespace Orbiters.Logger.Editor
         public string Link { get; set; }
         public string LinkLabel { get; set; }
 
-        internal Regex Regex;
-        internal bool Custom;
+        internal ExplanationOrigin Origin;
+        private Regex regex;
+        private bool patternFailed;
+
+        /// <summary>The compiled pattern, built at its first use; null without a pattern or when it doesn't compile.</summary>
+        internal Regex Regex
+        {
+            get
+            {
+                if (regex == null && !patternFailed && !string.IsNullOrEmpty(Pattern))
+                {
+                    try
+                    {
+                        regex = new Regex(Pattern, RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+                    }
+                    catch (ArgumentException)
+                    {
+                        patternFailed = true;
+                    }
+                }
+
+                return regex;
+            }
+        }
+
+        /// <summary>A pattern that doesn't compile: the entry never matches.</summary>
+        internal bool Broken => !string.IsNullOrEmpty(Pattern) && Regex == null;
 
         internal bool LevelMatches(LogLevel level)
         {
@@ -66,6 +93,14 @@ namespace Orbiters.Logger.Editor
         }
     }
 
+    /// <summary>Where an explanation comes from: the Logger's own file, the Orbiters server, or a package's code.</summary>
+    internal enum ExplanationOrigin : byte
+    {
+        Local,
+        Remote,
+        Custom
+    }
+
     /// <summary>A matched explanation with its placeholders filled from the log.</summary>
     internal sealed class ExplainedLog
     {
@@ -76,16 +111,19 @@ namespace Orbiters.Logger.Editor
     }
 
     /// <summary>
-    /// Explanations for known logs. The Logger ships explanations for common Unity, C# compiler and VRChat SDK messages;
-    /// other packages add their own with <see cref="Register"/>, which take precedence over the built-in ones.
+    /// Explanations for known logs: the Logger's own list (shipped with it, see <see cref="KnownLogs"/>), the newer list
+    /// from the Orbiters server when it could be downloaded (it replaces entries with the same id and adds others), and
+    /// what packages add with <see cref="Register"/>, which comes first.
     /// </summary>
     public static class LogExplanations
     {
         private static readonly List<LogExplanation> entries = new List<LogExplanation>();
+        private static readonly List<LogExplanation> custom = new List<LogExplanation>();
+        private static List<LogExplanation> local;
+        private static List<LogExplanation> remote = new List<LogExplanation>();
         private static readonly object gate = new object();
-        private static bool builtInsLoaded;
 
-        /// <summary>Bumps when explanations are added: cached matches are looked up again.</summary>
+        /// <summary>Bumps when explanations change: cached matches are looked up again.</summary>
         internal static int Version { get; private set; }
 
         /// <summary>Adds or replaces (same <see cref="LogExplanation.Id"/>) an explanation.</summary>
@@ -96,11 +134,28 @@ namespace Orbiters.Logger.Editor
                 throw new ArgumentNullException(nameof(explanation));
             }
 
-            explanation.Custom = true;
+            explanation.Origin = ExplanationOrigin.Custom;
             lock (gate)
             {
-                EnsureBuiltIns();
-                Add(explanation);
+                custom.RemoveAll(e => e.Id == explanation.Id);
+                custom.Add(explanation);
+                Rebuild();
+            }
+        }
+
+        /// <summary>Replaces the entries from the Orbiters server.</summary>
+        internal static void SetRemote(IEnumerable<LogExplanation> explanations)
+        {
+            var list = new List<LogExplanation>(explanations ?? Array.Empty<LogExplanation>());
+            foreach (var explanation in list)
+            {
+                explanation.Origin = ExplanationOrigin.Remote;
+            }
+
+            lock (gate)
+            {
+                remote = list;
+                Rebuild();
             }
         }
 
@@ -110,8 +165,19 @@ namespace Orbiters.Logger.Editor
             {
                 lock (gate)
                 {
-                    EnsureBuiltIns();
+                    EnsureLoaded();
                     return entries.Count;
+                }
+            }
+        }
+
+        internal static int RemoteCount
+        {
+            get
+            {
+                lock (gate)
+                {
+                    return remote.Count;
                 }
             }
         }
@@ -120,7 +186,7 @@ namespace Orbiters.Logger.Editor
         {
             lock (gate)
             {
-                EnsureBuiltIns();
+                EnsureLoaded();
                 return index >= 0 && index < entries.Count ? entries[index] : null;
             }
         }
@@ -135,7 +201,7 @@ namespace Orbiters.Logger.Editor
 
             lock (gate)
             {
-                EnsureBuiltIns();
+                EnsureLoaded();
                 for (int i = 0; i < entries.Count; i++)
                 {
                     var entry = entries[i];
@@ -154,9 +220,13 @@ namespace Orbiters.Logger.Editor
                         continue;
                     }
 
-                    if (entry.Regex != null && !SafeMatch(entry.Regex, condition).Success)
+                    if (!string.IsNullOrEmpty(entry.Pattern))
                     {
-                        continue;
+                        var regex = entry.Regex;
+                        if (regex == null || !SafeMatch(regex, condition).Success)
+                        {
+                            continue;
+                        }
                     }
 
                     return i;
@@ -175,7 +245,8 @@ namespace Orbiters.Logger.Editor
                 return null;
             }
 
-            Match match = entry.Regex != null ? SafeMatch(entry.Regex, condition ?? string.Empty) : null;
+            var regex = entry.Regex;
+            Match match = regex != null ? SafeMatch(regex, condition ?? string.Empty) : null;
             string Fill(string text)
             {
                 if (string.IsNullOrEmpty(text) || match == null || !match.Success || text.IndexOf('{') < 0)
@@ -183,7 +254,7 @@ namespace Orbiters.Logger.Editor
                     return text ?? string.Empty;
                 }
 
-                foreach (string name in entry.Regex.GetGroupNames())
+                foreach (string name in regex.GetGroupNames())
                 {
                     if (char.IsDigit(name[0]))
                     {
@@ -218,44 +289,63 @@ namespace Orbiters.Logger.Editor
             }
         }
 
-        private static void Add(LogExplanation explanation)
+        private static void EnsureLoaded()
         {
-            if (!string.IsNullOrEmpty(explanation.Pattern) && explanation.Regex == null)
-            {
-                explanation.Regex = new Regex(explanation.Pattern, RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
-            }
-
-            entries.RemoveAll(e => e.Id == explanation.Id);
-            // Custom explanations first, then the most specific (bound to a stack trace), then the rest in order.
-            int position = entries.Count;
-            for (int i = 0; i < entries.Count; i++)
-            {
-                if (Rank(explanation) < Rank(entries[i]))
-                {
-                    position = i;
-                    break;
-                }
-            }
-
-            entries.Insert(position, explanation);
-            Version++;
-        }
-
-        private static int Rank(LogExplanation explanation) =>
-            (explanation.Custom ? 0 : 2) + (string.IsNullOrEmpty(explanation.StackNeedle) ? 1 : 0);
-
-        private static void EnsureBuiltIns()
-        {
-            if (builtInsLoaded)
+            if (local != null)
             {
                 return;
             }
 
-            builtInsLoaded = true;
-            foreach (var explanation in KnownLogs.All())
-            {
-                Add(explanation);
-            }
+            local = new List<LogExplanation>(KnownLogs.Load());
+            Rebuild();
         }
+
+        // Package explanations first, then the ones bound to a tool's stack trace, then by priority, each group in the
+        // order of its list (the server's order before the Logger's own).
+        private static void Rebuild()
+        {
+            if (local == null)
+            {
+                local = new List<LogExplanation>(KnownLogs.Load());
+            }
+
+            var merged = new List<LogExplanation>(custom.Count + remote.Count + local.Count);
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var list in new[] { custom, remote, local })
+            {
+                foreach (var entry in list)
+                {
+                    if (ids.Add(entry.Id))
+                    {
+                        merged.Add(entry);
+                    }
+                }
+            }
+
+            var order = new Dictionary<LogExplanation, int>(merged.Count);
+            for (int i = 0; i < merged.Count; i++)
+            {
+                order[merged[i]] = i;
+            }
+
+            merged.Sort((a, b) =>
+            {
+                int rank = Rank(a).CompareTo(Rank(b));
+                if (rank != 0)
+                {
+                    return rank;
+                }
+
+                int priority = b.Priority.CompareTo(a.Priority);
+                return priority != 0 ? priority : order[a].CompareTo(order[b]);
+            });
+
+            entries.Clear();
+            entries.AddRange(merged);
+            Version++;
+        }
+
+        private static int Rank(LogExplanation explanation) =>
+            (explanation.Origin == ExplanationOrigin.Custom ? 0 : 2) + (string.IsNullOrEmpty(explanation.StackNeedle) ? 1 : 0);
     }
 }
