@@ -294,6 +294,8 @@ namespace Orbiters.Logger.Editor
         private FilterState state;
         private IReadOnlyList<SessionEvent> events = new SessionEvent[0];
         private TimelineMarker[] markers = new TimelineMarker[0];
+        private VisualElement markerLabels;
+        private string labelsKey = string.Empty;
         private long rangeFrom;
         private long rangeTo;
         private int hover = -1;
@@ -311,6 +313,9 @@ namespace Orbiters.Logger.Editor
             AddToClassList("lg-timeline");
             plot = LoggerUi.Box("lg-timeline__plot");
             plot.generateVisualContent += Draw;
+            markerLabels = LoggerUi.Box("lg-timeline__markers", PickingMode.Ignore);
+            plot.Add(markerLabels);
+            plot.RegisterCallback<GeometryChangedEvent>(_ => LayoutMarkerLabels());
             Add(plot);
 
             var axis = LoggerUi.Box("lg-timeline__axis", PickingMode.Ignore);
@@ -354,6 +359,7 @@ namespace Orbiters.Logger.Editor
             state = filter;
             events = sessionEvents ?? new SessionEvent[0];
             markers = projectMarkers ?? new TimelineMarker[0];
+            LayoutMarkerLabels();
             rangeFrom = from;
             rangeTo = to;
             bool hasData = state != null && state.HasTimeline && state.Covered > 0;
@@ -681,6 +687,71 @@ namespace Orbiters.Logger.Editor
             }
 
             batch.Flush(context);
+        }
+
+        // A small label next to each commit and release pin. Newest first wins the space; labels that would overlap a
+        // shown one are left out (the pin and the hover read-out still show them).
+        private void LayoutMarkerLabels()
+        {
+            if (markerLabels == null || state == null || !state.HasTimeline)
+            {
+                markerLabels?.Clear();
+                labelsKey = string.Empty;
+                return;
+            }
+
+            float width = PlotWidth;
+            string key = width.ToString("0") + "|" + state.ChartFrom / TimeSpan.TicksPerSecond + "|" + state.ChartTo / (TimeSpan.TicksPerSecond * 5) + "|" + markers.Length;
+            if (key == labelsKey)
+            {
+                return;
+            }
+
+            labelsKey = key;
+            markerLabels.Clear();
+            var taken = new List<(float from, float to)>();
+            for (int i = markers.Length - 1; i >= 0; i--)
+            {
+                var marker = markers[i];
+                long ticks = marker.TimeUtc.Ticks;
+                if (ticks < state.ChartFrom || ticks > state.ChartTo)
+                {
+                    continue;
+                }
+
+                bool release = marker.Kind == TimelineMarkerKind.Release;
+                string text = Shorten(marker.Title, release ? 30 : 22);
+                float labelWidth = 14f + text.Length * 5.6f;
+                float x = XOf(ticks);
+                // Right of the pin, or left of it near the right edge.
+                float left = x + labelWidth + 8f > width ? x - labelWidth - 6f : x + 6f;
+                if (left < 0f)
+                {
+                    continue;
+                }
+
+                bool overlaps = false;
+                foreach (var (from, to) in taken)
+                {
+                    if (left < to + 4f && left + labelWidth > from - 4f)
+                    {
+                        overlaps = true;
+                        break;
+                    }
+                }
+
+                if (overlaps)
+                {
+                    continue;
+                }
+
+                taken.Add((left, left + labelWidth));
+                var label = LoggerUi.Text(text, release ? "lg-timeline__marker--release" : "lg-timeline__marker--commit");
+                label.AddToClassList("lg-timeline__marker");
+                label.pickingMode = PickingMode.Ignore;
+                label.style.left = left;
+                markerLabels.Add(label);
+            }
         }
 
         private static string Shorten(string text, int max) => text.Length > max ? text.Substring(0, max) + "…" : text;

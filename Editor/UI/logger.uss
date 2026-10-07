@@ -2334,3 +2334,33 @@
     font-size: 11px;
     white-space: normal;
 }
+
+.lg-timeline__markers {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.lg-timeline__marker {
+    position: absolute;
+    top: 1px;
+    height: 14px;
+    padding: 0 5px;
+    border-radius: 4px;
+    font-size: 9px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-left;
+    white-space: nowrap;
+}
+
+.lg-timeline__marker--commit {
+    background-color: rgba(30, 45, 70, 0.92);
+    color: #a9c6ff;
+}
+
+.lg-timeline__marker--release {
+    background-color: rgba(70, 52, 18, 0.95);
+    color: #ffd27a;
+}
