@@ -16,15 +16,17 @@ namespace Orbiters.Logger.Editor
     internal static class LoggerUi
     {
         internal const string PressedClass = "lg-pressed";
+        private const string PressableClass = "lg-pressable";
 
         /// <summary>Shows the press at once and runs <paramref name="action"/> on press; a click still works (keyboard, assistive input).</summary>
         internal static void Press(VisualElement element, Action action)
         {
             bool handledByPress = false;
             long lastPress = 0;
+            element.AddToClassList(PressableClass);
             element.RegisterCallback<PointerDownEvent>(evt =>
             {
-                if (evt.button != 0 || !element.enabledInHierarchy)
+                if (evt.button != 0 || !element.enabledInHierarchy || OnInnerButton(element, evt.target as VisualElement))
                 {
                     return;
                 }
@@ -75,6 +77,21 @@ namespace Orbiters.Logger.Editor
                     evt.StopPropagation();
                 }
             });
+        }
+
+        // A button inside a pressable one (a source row's "Only") answers its own press: the outer handler runs first,
+        // in the trickle-down phase, and stopping the event there would leave the inner one nothing.
+        private static bool OnInnerButton(VisualElement element, VisualElement target)
+        {
+            for (var current = target; current != null && current != element; current = current.parent)
+            {
+                if (current is Button || current.ClassListContains(PressableClass))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         internal static Button Icon(LoggerGlyph glyph, string tooltip, Action action, string extraClass = null)

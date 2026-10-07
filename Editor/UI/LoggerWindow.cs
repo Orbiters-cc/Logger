@@ -19,6 +19,7 @@ namespace Orbiters.Logger.Editor
         private const string CompactPref = "Orbiters.Logger.Compact";
         private const string MonospacePref = "Orbiters.Logger.Monospace";
         private const int TickMs = 40;
+        private const string FindCommand = "Find";
 
         private static int openWindows;
 
@@ -27,8 +28,10 @@ namespace Orbiters.Logger.Editor
         [SerializeField] private bool useRegex;
         [SerializeField] private bool matchCase;
         [SerializeField] private bool searchStack;
-        [SerializeField] private bool grouped;
-        [SerializeField] private GroupSort sort = GroupSort.FirstSeen;
+        // A new window shows groups, the most recently logged last; an open one keeps what it was left on (the layout
+        // saves both).
+        [SerializeField] private bool grouped = true;
+        [SerializeField] private GroupSort sort = GroupSort.LastSeen;
         [SerializeField] private List<string> hiddenSources = new List<string>();
         [SerializeField] private List<string> muted = new List<string>();
         [SerializeField] private long rangeFrom;
@@ -146,6 +149,14 @@ namespace Orbiters.Logger.Editor
             toasts = new Toasts();
             rootVisualElement.Add(toasts);
             rootVisualElement.RegisterCallback<KeyDownEvent>(OnKeyDown, TrickleDown.TrickleDown);
+            // Ctrl+F is Unity's Edit > Find shortcut: the key doesn't get here, a "Find" command does, and only to the
+            // focused element. The root takes the focus a click leaves to nothing (Tab skips it), so it always arrives.
+            rootVisualElement.focusable = true;
+            rootVisualElement.tabIndex = -1;
+            rootVisualElement.RegisterCallback<ValidateCommandEvent>(OnValidateCommand);
+            rootVisualElement.RegisterCallback<ExecuteCommandEvent>(OnExecuteCommand);
+            rootVisualElement.RegisterCallback<PointerDownEvent>(OnAnyPointerDown, TrickleDown.TrickleDown);
+            rootVisualElement.RegisterCallback<AttachToPanelEvent>(OnRootAttached);
             built = true;
 
             query = new LogQuery(search, useRegex, matchCase, searchStack);
@@ -160,6 +171,7 @@ namespace Orbiters.Logger.Editor
             Refilter(allowAsync: false);
             list.ScrollToEnd();
             rootVisualElement.schedule.Execute(Tick).Every(TickMs);
+            rootVisualElement.schedule.Execute(KeepFocusInside);
             UpdateChrome(force: true);
         }
 
@@ -436,11 +448,56 @@ namespace Orbiters.Logger.Editor
 
         // ---- Keyboard -------------------------------------------------------------------------------------------
 
+        // Ctrl+A and Ctrl+C are Unity's Edit > Select All and Copy as well: they come as commands, not keys. A text
+        // field keeps them for its own text.
+        private bool HandlesCommand(string name) =>
+            name == FindCommand || ((name == "SelectAll" || name == "Copy") && !EditingText());
+
+        private bool EditingText() => rootVisualElement.panel?.focusController?.focusedElement is VisualElement focused &&
+                                      (focused is TextField || focused.GetFirstAncestorOfType<TextField>() != null);
+
+        private void OnValidateCommand(ValidateCommandEvent evt)
+        {
+            if (HandlesCommand(evt.commandName))
+            {
+                evt.StopPropagation();
+                evt.imguiEvent?.Use();
+            }
+        }
+
+        private void OnExecuteCommand(ExecuteCommandEvent evt)
+        {
+            if (!HandlesCommand(evt.commandName)) return;
+            if (evt.commandName == FindCommand) searchBox?.FocusField();
+            else if (evt.commandName == "SelectAll") SelectAll();
+            else Copy(withStack: false);
+            evt.StopPropagation();
+            evt.imguiEvent?.Use();
+        }
+
+        // Unity moves the focus once the press is handled, to nothing when what was clicked can't take it (a row, a
+        // label, a pane): checked a moment later.
+        private void OnAnyPointerDown(PointerDownEvent evt) => rootVisualElement.schedule.Execute(KeepFocusInside);
+
+        // A docked tab brought back starts with nothing focused.
+        private void OnRootAttached(AttachToPanelEvent evt) => rootVisualElement.schedule.Execute(KeepFocusInside);
+
+        private void KeepFocusInside()
+        {
+            var focus = rootVisualElement.panel?.focusController;
+            if (focus != null && focus.focusedElement == null)
+            {
+                rootVisualElement.Focus();
+            }
+        }
+
         private void OnKeyDown(KeyDownEvent evt)
         {
             bool command = evt.ctrlKey || evt.commandKey;
             bool typing = searchBox != null && searchBox.HasFocus;
-            if (command && evt.keyCode == KeyCode.F)
+            // Gets here only when Edit > Find isn't on that key in the Shortcut Manager. Cmd+F on macOS, where Ctrl+F
+            // moves the caret in text fields.
+            if (evt.actionKey && !evt.altKey && !evt.shiftKey && evt.keyCode == KeyCode.F)
             {
                 searchBox.FocusField();
                 evt.StopPropagation();

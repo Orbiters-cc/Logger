@@ -1,5 +1,21 @@
 # Logger
 
+## 0.2.1 — 2026-10-07
+
+- Undo history timeline: the snapshot of a step shows the project right after it (it could show it before: it was
+  taken as soon as Unity listed the step, often while the change was still being made). It waits until nothing has
+  been recorded for a moment and no drag is going on. With the Scene view hidden behind another tab, its camera takes
+  the snapshot.
+- Undo history timeline: the hover card draws over the list and the details (it was hidden behind them).
+- Messages with control characters (the field separators of Unit Git's `git log` output) show them as "·": Unity's
+  font has no glyph for them and warned at every redraw.
+- **Explanations from Orbiters** can be turned off in the settings.
+- Ctrl+A and Ctrl+C select and copy logs again (Unity sends them to the window as Edit › Select All and Copy).
+- "Only" in the Sources list shows just that source (it ticked or unticked the row instead).
+- A new Logger window opens on Groups, sorted by Last seen; a window already open keeps the view and order it is on.
+- The commit hash in "Appearing since" sits centred in its chip.
+- Ctrl+F (Cmd+F on macOS) jumps to the search field and selects its text from anywhere in the window.
+
 ## 0.2.0 — 2026-10-07
 
 - **Timings**: every script reload, entry into Play Mode and avatar build or upload is logged with what each package
@@ -104,6 +120,7 @@ The sliders button opens the settings:
 - **Compact rows**: one line per log. **Monospace font** for messages.
 - **Memory**: how many logs to keep (250K to 6M, 3M by default); the oldest fifth goes when the limit is reached.
 - **Unity's console**: open it, or read it again from scratch.
+- **Explanations from Orbiters**: keep the explanations up to date from Orbiters between releases (on by default).
 - **Timings**: measure script reloads, entering Play Mode, and avatar builds and uploads (all on by default).
 - **Beta**: the undo history timeline.
 
@@ -146,8 +163,9 @@ undo steps (Edit › Undo History) like a video's progress bar: one tick per ste
 done filled, the playhead where the project is. Hover a step for a snapshot of the Scene view right after it, its
 name and when it happened (its moment is also marked on the activity chart). Click or drag to go there: the Logger
 undoes or redoes one step at a time until the project is as it was right after that step. Scroll over the strip for
-one step back or forward. Snapshots are read from the Scene view window's own framebuffer when it is the visible tab
-(no extra render), scaled down on the GPU and kept as small JPEGs (the last 600).
+one step back or forward. A step's snapshot is taken once the change is done: nothing recorded for 0.4 s and no drag
+going on. It is read from the Scene view window's own framebuffer when it is the visible tab (no extra render), or
+rendered by its camera when another tab hides it, scaled down on the GPU and kept as a small JPEG (the last 600).
 
 ## How it works
 

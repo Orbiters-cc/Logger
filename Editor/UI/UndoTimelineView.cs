@@ -236,6 +236,11 @@ namespace Orbiters.Logger.Editor
 
             cardEmpty.style.display = jpg != null ? DisplayStyle.None : DisplayStyle.Flex;
             card.style.display = DisplayStyle.Flex;
+            // Over the panes laid out after the strip (the list and the details), not under them.
+            if (card.parent != null && card.parent.IndexOf(card) != card.parent.childCount - 1)
+            {
+                card.BringToFront();
+            }
 
             // Centred on the step, under the strip (over the list), kept inside the window.
             var bounds = strip.worldBound;

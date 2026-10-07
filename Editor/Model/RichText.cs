@@ -37,6 +37,7 @@ namespace Orbiters.Logger.Editor
                 return string.Empty;
             }
 
+            text = Printable(text);
             if (text.IndexOf('<') < 0)
             {
                 return text;
@@ -55,6 +56,8 @@ namespace Orbiters.Logger.Editor
             {
                 return Literal(text);
             }
+
+            text = Printable(text);
 
             var builder = new StringBuilder(text.Length + ranges.Count * 48);
             int position = 0;
@@ -92,6 +95,8 @@ namespace Orbiters.Logger.Editor
                 return string.Empty;
             }
 
+            text = Printable(text);
+
             int end = text.IndexOf('\n');
             if (end < 0)
             {
@@ -111,6 +116,46 @@ namespace Orbiters.Logger.Editor
             return end == text.Length ? text : text.Substring(0, end);
         }
 
+        /// <summary>
+        /// <paramref name="text"/> with its control characters (git's field separators, escape codes) shown as "·": the
+        /// editor font has no glyph for them and Unity warns at every redraw. Same length, so match ranges still fit.
+        /// </summary>
+        public static string Printable(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text ?? string.Empty;
+            }
+
+            int first = -1;
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (IsHidden(text[i]))
+                {
+                    first = i;
+                    break;
+                }
+            }
+
+            if (first < 0)
+            {
+                return text;
+            }
+
+            var chars = text.ToCharArray();
+            for (int i = first; i < chars.Length; i++)
+            {
+                if (IsHidden(chars[i]))
+                {
+                    chars[i] = '·';
+                }
+            }
+
+            return new string(chars);
+        }
+
+        private static bool IsHidden(char c) => (c < ' ' && c != '\n' && c != '\r' && c != '\t') || c == '\u007f';
+
         /// <summary>The second line of a text, if any (for multi-line messages).</summary>
         public static string SecondLine(string text, int maxLength)
         {
@@ -118,6 +163,8 @@ namespace Orbiters.Logger.Editor
             {
                 return string.Empty;
             }
+
+            text = Printable(text);
 
             int first = text.IndexOf('\n');
             if (first < 0 || first + 1 >= text.Length)

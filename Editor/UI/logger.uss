@@ -2676,10 +2676,14 @@
     --icon-width: 2;
 }
 
+/* Laid out like .lg-button: Unity's button stacks its children from the top, which left the hash high in its chip. */
 .lg-since__hash {
     height: 20px;
     margin: 0 8px 0 0;
     padding: 0 7px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
     border-width: 0;
     border-radius: 6px;
     background-color: rgba(106, 167, 255, 0.14);
@@ -2700,6 +2704,8 @@
 }
 
 .lg-since__hash-label {
+    margin: 0;
+    padding: 0;
     color: #a9c8ff;
     font-size: 11px;
     -unity-font-style: bold;

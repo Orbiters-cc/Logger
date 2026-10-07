@@ -260,6 +260,10 @@ namespace Orbiters.Logger.Editor
             body.Add(Switch("Compact rows", "One line per log, without the line it was logged from.", () => window.IsCompact, window.SetCompact));
             body.Add(Switch("Monospace font", "Messages in a fixed-width font, like code.", () => window.IsMonospace, window.SetMonospace));
 
+            body.Add(Section("Explanations", "What known messages mean and how to fix them."));
+            body.Add(Switch("Explanations from Orbiters", "Keep them up to date from Orbiters between releases; members signed in through Orbiters Toolkit also get the members' entries.",
+                () => RemoteExplanations.Enabled, on => RemoteExplanations.Enabled = on));
+
             body.Add(Section("Timings", "Logged as they happen, with each package's part."));
             body.Add(Switch("Script reloads", "What each package costs at every reload. Turns on Unity's reload timing diagnostics.",
                 () => ReloadTimings.Enabled, on => ReloadTimings.Enabled = on));

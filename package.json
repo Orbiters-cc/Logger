@@ -1,7 +1,7 @@
 {
   "name": "orbiters.logger",
   "displayName": "Logger",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "LicenseRef-Orbiters-Proprietary",
   "unity": "2022.3",
   "description": "A log hub for the Unity editor that replaces the Console: regex search, logs grouped by text with how often they happen, filters by source, level and time, multi-select copy with or without stack traces, explanations for over 300 known messages kept up to date from Orbiters, an activity timeline, and what each package costs at every script reload, entry into Play Mode and avatar upload. Handles millions of logs.",
@@ -16,5 +16,5 @@
   },
   "legacyFolders": {},
   "legacyFiles": {},
-  "url": "https://github.com/Orbiters-cc/Logger/releases/download/0.2.0/Logger-0.2.0.zip"
+  "url": "https://github.com/Orbiters-cc/Logger/releases/download/0.2.1/Logger-0.2.1.zip"
 }

@@ -31,6 +31,8 @@ namespace Orbiters.Logger.Editor
         private const int Magic = 0x55444F4C; // "LODU"
         private const int FormatVersion = 1;
         private const double SyncSeconds = 0.25d;
+        // A step's snapshot waits for the editing to settle: nothing recorded for this long and no drag going on.
+        private const double SettleSeconds = 0.4d;
         private const double TravelBudgetMs = 24d;
 
         private delegate void UndoListReader(List<string> names, out int cursor);
@@ -43,6 +45,8 @@ namespace Orbiters.Logger.Editor
         private static bool dirty;
         private static double nextSync;
         private static int target = int.MinValue;
+        private static UndoStep settling;
+        private static double settledAt;
 
         static UndoHistory()
         {
@@ -124,13 +128,19 @@ namespace Orbiters.Logger.Editor
             EditorApplication.update -= Update;
             AssemblyReloadEvents.beforeAssemblyReload -= Save;
             SceneThumbnails.Stop();
+            settling = null;
             steps.Clear();
             target = int.MinValue;
             Version++;
             Delete();
         }
 
-        private static void MarkDirty() => dirty = true;
+        private static void MarkDirty()
+        {
+            dirty = true;
+            // Still editing (a drag, a slider): the newest step's snapshot waits until it stops.
+            if (settling != null) settledAt = EditorApplication.timeSinceStartup + SettleSeconds;
+        }
 
         private static void Update()
         {
@@ -148,6 +158,13 @@ namespace Orbiters.Logger.Editor
                     nextSync = now + SyncSeconds;
                     dirty = false;
                     Sync();
+                }
+
+                // The snapshot shows the project right after the step: once the editing settled, mouse released.
+                if (settling != null && now >= settledAt && UnityEngine.GUIUtility.hotControl == 0)
+                {
+                    SceneThumbnails.Capture(settling);
+                    settling = null;
                 }
             }
             catch (Exception)
@@ -195,7 +212,9 @@ namespace Orbiters.Logger.Editor
 
             if (names.Count > common && known)
             {
-                SceneThumbnails.Capture(steps[steps.Count - 1]);
+                // A step still settling when the next one starts has no snapshot: the scene already moved on.
+                settling = steps[steps.Count - 1];
+                settledAt = EditorApplication.timeSinceStartup + SettleSeconds;
             }
 
             cursor = newCursor;
