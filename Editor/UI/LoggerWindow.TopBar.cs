@@ -138,6 +138,15 @@ namespace Orbiters.Logger.Editor
             }
         }
 
+        /// <summary>Puts <paramref name="text"/> in the search field and filters by it at once.</summary>
+        private void SetSearch(string text)
+        {
+            searchBox.Value = text;
+            search = text;
+            ApplyQuery(0d);
+            searchBox.Sync();
+        }
+
         // Typing waits a little more when each keystroke means a full pass over a big store.
         private double QueryDelay() => Store != null && Store.Count > 200_000 ? 0.18d : 0.06d;
 
@@ -380,11 +389,10 @@ namespace Orbiters.Logger.Editor
             footerRight.text = state.Milliseconds > 0 ? "filtered in " + state.Milliseconds.ToString(state.Milliseconds < 10 ? "0.0" : "0") + " ms" : string.Empty;
         }
 
-        private static string LevelTooltip(LogLevel level, int value)
-        {
-            string noun = level == LogLevel.Error ? "error" : level == LogLevel.Warning ? "warning" : "log";
-            return LoggerUi.Plural(value, noun) + " match the other filters.\nClick to show or hide; Alt+click to show only these.";
-        }
+        private static string LevelTooltip(LogLevel level, int value) =>
+            LoggerUi.Plural(value, LevelNoun(level)) + " match the other filters.\nClick to show or hide; Alt+click to show only these.";
+
+        private static string LevelNoun(LogLevel level) => level == LogLevel.Error ? "error" : level == LogLevel.Warning ? "warning" : "log";
 
         private void ClearLogs()
         {

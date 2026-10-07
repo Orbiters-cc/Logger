@@ -166,6 +166,63 @@ namespace Orbiters.Logger.Editor.Tests
             Assert.Less(full, 3000, "a full pass over a million logs stays well under a few seconds even on a slow machine");
         }
 
+        [Test]
+        public void WhatHidesAgreesWithAFullPass()
+        {
+            var store = Sample();
+            var specs = new List<FilterSpec>
+            {
+                new FilterSpec(),
+                new FilterSpec { LevelMask = (1 << (int)LogLevel.Warning) | (1 << (int)LogLevel.Error) },
+                new FilterSpec { Query = new LogQuery("player", false, false, false) },
+                new FilterSpec { Query = new LogQuery("Game.cs", false, false, true) },
+                new FilterSpec { From = TimeSpan.TicksPerSecond * 2, To = TimeSpan.TicksPerSecond * 4 }
+            };
+            var source = new FilterSpec();
+            source.HiddenSources.Add(store.SourceOf(store.MessageAt(2)).Key);
+            specs.Add(source);
+            var muted = new FilterSpec { LevelMask = 1 << (int)LogLevel.Info };
+            muted.Muted.Add("Player spawned");
+            specs.Add(muted);
+            foreach (var spec in specs)
+            {
+                var state = Run(store, spec);
+                for (int i = 0; i < store.Count; i++)
+                {
+                    Assert.AreEqual(state.RowOf(i) >= 0, spec.WhatHides(store, i) == HiddenBy.None, "occurrence " + i);
+                }
+            }
+        }
+
+        [Test]
+        public void WhatHidesNamesTheFiltersToTurnOff()
+        {
+            // A successful upload is a log, a failed one a warning: with logs turned off, the newest bar of the uploads
+            // chart pointed at a row the list didn't have.
+            var store = new LogStore();
+            var failed = new TimingProfile { Kind = TimingKind.AvatarUpload, TotalMilliseconds = 146000, Subject = "Rexouium", Outcome = "upload failed" };
+            var uploaded = new TimingProfile { Kind = TimingKind.AvatarUpload, TotalMilliseconds = 131000, Subject = "Rexouium" };
+            int failedAt = store.Add(TimeSpan.TicksPerSecond * 10, failed.Message(), failed.Format(), LogVariant.Warning);
+            int uploadedAt = store.Add(TimeSpan.TicksPerSecond * 20, uploaded.Message(), uploaded.Format(), LogVariant.Log);
+            var warningsAndErrors = new FilterSpec { LevelMask = (1 << (int)LogLevel.Warning) | (1 << (int)LogLevel.Error) };
+            Assert.AreEqual(HiddenBy.None, warningsAndErrors.WhatHides(store, failedAt));
+            Assert.AreEqual(HiddenBy.Level, warningsAndErrors.WhatHides(store, uploadedAt));
+
+            var several = new FilterSpec { LevelMask = 1 << (int)LogLevel.Error, Query = new LogQuery("failed", false, false, false), From = 1, To = TimeSpan.TicksPerSecond * 15 };
+            several.HiddenSources.Add(store.SourceOf(store.MessageAt(uploadedAt)).Key);
+            several.Muted.Add(uploaded.Message());
+            Assert.AreEqual(HiddenBy.Level | HiddenBy.Search | HiddenBy.Source | HiddenBy.Muted | HiddenBy.Range, several.WhatHides(store, uploadedAt));
+
+            Assert.AreEqual(HiddenBy.Gone, new FilterSpec().WhatHides(store, store.Count), "not in the store");
+            const string text = "Assets/A.cs(1,1): error CS0103: The name 'x' does not exist";
+            int first = store.AddCompile(TimeSpan.TicksPerSecond * 30, text, true, store.AssemblyId("Asm"), null, 0, 0);
+            int again = store.AddCompile(TimeSpan.TicksPerSecond * 40, text, true, store.AssemblyId("Asm"), null, 0, 0);
+            Assert.AreEqual(HiddenBy.Gone, new FilterSpec().WhatHides(store, first), "reported again since");
+            Assert.AreEqual(HiddenBy.None, new FilterSpec().WhatHides(store, again));
+            store.ResolveCompile(-1, errorsOnly: false);
+            Assert.AreEqual(HiddenBy.Gone, new FilterSpec().WhatHides(store, again), "fixed since");
+        }
+
         private static int Sum(int[] values)
         {
             int total = 0;

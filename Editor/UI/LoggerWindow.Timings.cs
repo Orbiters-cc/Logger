@@ -82,14 +82,15 @@ namespace Orbiters.Logger.Editor
             if (profile.Kind == TimingKind.ScriptReload && ordered.Count <= 1)
             {
                 var note = LoggerUi.Box("lg-timing__note");
-                note.Add(LoggerUi.Text(ReloadTimings.Enabled
+                note.Add(LoggerUi.Text(ReloadTimings.Enabled && ReloadTimings.ByPackage
                     ? "Unity reports each package's part from the next reload on."
-                    : "Turn on reload measuring to see what each package costs.", "lg-details__note"));
-                if (!ReloadTimings.Enabled)
+                    : "Measure reloads by package to see what each package costs (it leaks a little editor memory per reload).", "lg-details__note"));
+                if (!(ReloadTimings.Enabled && ReloadTimings.ByPackage))
                 {
-                    note.Add(LoggerUi.Pill("Measure reloads", () =>
+                    note.Add(LoggerUi.Pill("Measure by package", () =>
                     {
                         ReloadTimings.Enabled = true;
+                        ReloadTimings.ByPackage = true;
                         ShowToast("Reloads are measured by package from the next one on");
                     }, "ghost", LoggerGlyph.Stopwatch));
                 }
@@ -283,7 +284,12 @@ namespace Orbiters.Logger.Editor
             return stats;
         }
 
-        /// <summary>Selects the (latest) log of a message, as a click on its row would: from the history chart or the timeline.</summary>
+        /// <summary>
+        /// Selects the log of a timing, as a click on its row would: from the history chart or the timeline. The filters
+        /// that hide it are turned off (a successful upload is a log, a failed one a warning: showing only warnings and
+        /// errors hides the first), and a group row showing a later log of the same text gives way to the list, so what
+        /// shows is the timing that was clicked.
+        /// </summary>
         private void SelectTimingLog(int messageId)
         {
             var store = Store;
@@ -292,17 +298,42 @@ namespace Orbiters.Logger.Editor
                 return;
             }
 
-            ref var message = ref store.Message(messageId);
-            int key = grouped ? message.Group : message.Last;
+            int occurrence = store.Message(messageId).Last;
+            var hidden = BuildSpec().WhatHides(store, occurrence);
+            if ((hidden & HiddenBy.Gone) != 0)
+            {
+                ShowToast("That timing is no longer in the log", error: true);
+                return;
+            }
+
+            var changes = RevealOccurrence(store, occurrence, hidden);
+            if (changes.Count > 0 || state.RowOf(occurrence) < 0)
+            {
+                // Filters just changed, or the list hasn't taken the newest logs in yet: the row is needed now.
+                Refilter(allowAsync: false);
+            }
+
+            int group = store.Message(messageId).Group;
+            if (grouped && group < state.GroupCount.Length && state.GroupCount[group] > 0 && state.GroupLast[group] != occurrence)
+            {
+                SetGrouped(false);
+                changes.Add("list view");
+            }
+
+            int key = grouped ? group : occurrence;
             int row = RowOf(key);
             if (row < 0)
             {
-                ShowToast("That timing is hidden by the filters", error: true);
+                ShowToast("Couldn't show that timing", error: true);
                 return;
             }
 
             Select(key, extend: false, toggle: false);
             list.Center(row);
+            if (changes.Count > 0)
+            {
+                ShowToast("Showing that timing: " + string.Join(", ", changes));
+            }
         }
     }
 }

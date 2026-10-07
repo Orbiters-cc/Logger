@@ -1,6 +1,19 @@
 {
   "explanations": [
     {
+      "id": "vrchat.build-aborted-by-thumbnail-check",
+      "needle": "VRCSDK build was aborted at the request of the",
+      "pattern": "'VrcSdkThumbnailCheck'",
+      "severity": "problem",
+      "source": "My Avatar",
+      "title": "My Avatar stopped the upload: VRChat already has this thumbnail",
+      "summary": "The thumbnail waiting in the VRChat SDK panel is the exact image VRChat already holds for this avatar. VRChat refuses to upload the same file twice (“This file was already uploaded”), but only after the whole build and the avatar upload, so My Avatar stopped the build right away and took the thumbnail out of the upload.",
+      "fixes": [
+        "Click Build & Publish again: the avatar is uploaded and keeps its current thumbnail.",
+        "To change the thumbnail, take a new one in My Avatar (or pick another image in the SDK) before uploading."
+      ]
+    },
+    {
       "id": "vrchat.build-aborted-by-blueprint-check",
       "needle": "VRCSDK build was aborted at the request of the",
       "pattern": "'BlueprintOwnershipCheck'",
@@ -2790,14 +2803,68 @@
       ]
     },
     {
+      "id": "myavatar.thumbnail-duplicate-stopped",
+      "needle": "[My Avatar] Build & Publish stopped before the build: the thumbnail waiting",
+      "severity": "problem",
+      "source": "My Avatar",
+      "title": "VRChat already has this thumbnail",
+      "summary": "The VRChat SDK was about to upload a thumbnail identical to the avatar's current one on VRChat, which VRChat refuses at the end of the upload. My Avatar took the thumbnail out of the upload and stopped Build & Publish before the build, so nothing was lost but a click.",
+      "fixes": [
+        "Click Build & Publish again: the avatar is uploaded with its current thumbnail."
+      ]
+    },
+    {
+      "id": "vrchat.thumbnail-already-uploaded",
+      "needle": "This file was already uploaded",
+      "stackNeedle": "UpdateAvatarImage",
+      "priority": 10,
+      "severity": "blocking",
+      "source": "VRChat SDK",
+      "title": "VRChat refused the thumbnail: it already has this exact image",
+      "summary": "The upload sends a new thumbnail only when one waits in the SDK panel. VRChat compares it with the image it already stores for the avatar and refuses an identical file, so the upload stopped after the whole build. A thumbnail chosen in the panel stays waiting even after the panel reloads the avatar, so this often comes from one picked earlier, or offered while the panel had cleared the blueprint ID. Nothing was changed on VRChat: the avatar keeps its previous version.",
+      "fixes": [
+        "In the SDK panel, click Discard Changes (under the avatar's details) to drop the waiting thumbnail, then Build & Publish again.",
+        "Or take a new thumbnail (in My Avatar or with Select New Thumbnail) so the image differs.",
+        "With My Avatar 0.9.5 or later this is caught before the build: update it if the upload still gets this far."
+      ]
+    },
+    {
+      "id": "vrchat.file-already-uploaded",
+      "needle": "This file was already uploaded",
+      "severity": "blocking",
+      "source": "VRChat SDK",
+      "title": "VRChat refused a file it already has",
+      "summary": "Before uploading a file (the avatar's thumbnail or its asset bundle), the SDK compares it with the latest version VRChat stores. An identical file is refused, so the upload stopped. For the bundle, it means this exact build was uploaded already.",
+      "fixes": [
+        "If it was the thumbnail: click Discard Changes in the SDK panel, or choose a different image, then Build & Publish again.",
+        "If it was the bundle: change something in the avatar (or just build again) so the SDK makes a new build, then upload."
+      ]
+    },
+    {
+      "id": "vrchat.upload-failed",
+      "needle": "Failed to upload avatar!",
+      "levels": [
+        "log"
+      ],
+      "severity": "problem",
+      "source": "VRChat SDK",
+      "title": "The avatar upload failed",
+      "summary": "The VRChat SDK announces the failure with this line; the reason is the error it logs right after (in red, from the same place). The avatar on VRChat is unchanged.",
+      "fixes": [
+        "Open the error just after this line: its explanation says what to fix.",
+        "Then Build & Publish again."
+      ]
+    },
+    {
       "id": "vrchat.blueprint-cleared",
       "needle": "Loaded data for an avatar we do not own",
       "severity": "info",
       "source": "VRChat SDK",
-      "title": "The SDK cleared a blueprint ID that wasn't yours",
-      "summary": "The avatar's blueprint ID pointed to an avatar your VRChat account doesn't own, so the SDK panel removed it. The avatar will be uploaded as a new one.",
+      "title": "The SDK cleared the avatar's blueprint ID",
+      "summary": "When the SDK panel loads an avatar, it asks VRChat for the avatar its blueprint ID points to. When VRChat answers that it belongs to another account, or that it doesn't exist (which can also be a passing VRChat error), the panel removes the ID and treats the avatar as a new one.",
       "fixes": [
-        "Nothing to do: fill in the new avatar's name and thumbnail in the SDK panel, then Build & Publish."
+        "If the avatar is yours, press Ctrl+Z (Undo “Cleared the blueprint ID we do not own”) to get the ID back before uploading, or the upload creates a second avatar.",
+        "If it isn't yours: fill in the new avatar's name and thumbnail in the SDK panel, then Build & Publish."
       ]
     },
     {
@@ -3346,8 +3413,23 @@
       "severity": "harmless",
       "source": "Unity",
       "title": "Unity temporary memory notice",
-      "summary": "Unity's internal temporary memory reports leftovers, typically after heavy editor work or imports. It doesn't affect your project.",
-      "fixes": []
+      "summary": "Unity's temporary memory for a frame still held some blocks at the frame's end. Unity then repeats this notice, and lists each leftover block (“Allocation of N bytes at…”), every frame until the blocks are released: about sixty lines per frame, which grows Editor.log by gigabytes and slows every script reload. The project itself is not affected.",
+      "fixes": [
+        "If it started after a script reload and the Logger's “Script reloads by package” setting is on, that is the cause: Unity's reload timing diagnostics leak about 100 KB of this memory at every reload in Unity 2022.3. Turn the setting off (Logger settings › Timings), then reload scripts once: the leak is gone and the notice stops.",
+        "Otherwise, to find what holds the memory, start Unity with the -diag-temp-memory-leak-validation argument (Unity Hub: the project's command line arguments): the notice then shows the call stack of each block, which names the tool or package to fix."
+      ]
+    },
+    {
+      "id": "unity.tls-allocation-list",
+      "needle": "Allocation of ",
+      "pattern": "^Allocation of \\d+ bytes at (0x)?[0-9A-Fa-f]+$",
+      "severity": "harmless",
+      "source": "Unity",
+      "title": "A leftover block of Unity's temporary memory",
+      "summary": "One of the blocks Unity's “has unfreed allocations” notice lists, with its size and address. Unity lists them again every frame while they stay held, so the same addresses repeat.",
+      "fixes": [
+        "See the “has unfreed allocations” notice next to it: turning off the Logger's “Script reloads by package” setting and reloading scripts clears the common cause, and the -diag-temp-memory-leak-validation argument shows what holds these blocks otherwise."
+      ]
     },
     {
       "id": "unity.job-temp-alloc",

@@ -123,5 +123,17 @@ namespace Orbiters.Logger.Editor.Tests
                 LogExplanations.SetRemote(null);
             }
         }
+
+        [Test]
+        public void AvatarUploadRefusals()
+        {
+            const string thumbnailStack = "VRC.SDK3A.Editor.VRCSdkControlPanelAvatarBuilder:HandleUploadError (System.Exception)\n" +
+                                          "VRC.SDKBase.Editor.Api.VRCApi/<UpdateAvatarImage>d__33:MoveNext ()";
+            Assert.AreEqual("vrchat.thumbnail-already-uploaded", IdOf("This file was already uploaded", thumbnailStack));
+            Assert.AreEqual("vrchat.file-already-uploaded", IdOf("This file was already uploaded, you should make a new build", "VRC.SDKBase.Editor.Api.VRCApi/<UpdateAvatarBundle>d__34:MoveNext ()"));
+            Assert.AreEqual("vrchat.upload-failed", IdOf("Failed to upload avatar!", level: LogLevel.Info));
+            Assert.AreEqual("vrchat.build-aborted-by-thumbnail-check", IdOf("VRCSDK build was aborted at the request of the 'VrcSdkThumbnailCheck' VRCSDKBuildRequestedCallback"));
+            Assert.AreEqual("myavatar.thumbnail-duplicate-stopped", IdOf("[My Avatar] Build & Publish stopped before the build: the thumbnail waiting in the VRChat SDK (a.png) is already the thumbnail of A (avtr_x) on VRChat", level: LogLevel.Warning));
+        }
     }
 }

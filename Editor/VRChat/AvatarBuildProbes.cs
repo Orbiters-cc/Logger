@@ -125,6 +125,7 @@ namespace Orbiters.Logger.Editor.VRChat
                 {
                     BuildSteps.End(true);
                     last = -1;
+                    AvatarUploadTimings.StepsDone();
                 }
             }
             catch (Exception)

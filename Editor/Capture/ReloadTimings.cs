@@ -12,17 +12,19 @@ using UnityEngine;
 namespace Orbiters.Logger.Editor
 {
     /// <summary>
-    /// Measures every script reload, package by package. Unity writes a "Domain Reload Profiling" tree to Editor.log
-    /// after each reload; with its <c>EnableDomainReloadTimings</c> diagnostic switch on (the Logger turns it on while
-    /// this is enabled) the tree lists each type and method that runs on load, each before/after-reload callback and
-    /// each window restored. The tree is read back after the reload, every entry is given to the package its code
-    /// belongs to, and the result is logged as a timing log (or handed to the Play Mode timing when the reload was part
-    /// of entering Play Mode).
+    /// Measures every script reload. Unity writes a "Domain Reload Profiling" tree to Editor.log after each reload;
+    /// with its <c>EnableDomainReloadTimings</c> diagnostic switch on (the Logger turns it on only when
+    /// <see cref="ByPackage"/> is) the tree lists each type and method that runs on load, each before/after-reload
+    /// callback and each window restored. The tree is read back after the reload, every entry is given to the package
+    /// its code belongs to, and the result is logged as a timing log (or handed to the Play Mode timing when the reload
+    /// was part of entering Play Mode). That switch leaks a little of Unity's temporary memory at every reload (Unity
+    /// 2022.3 then reports the leak on every editor tick), so it is opt-in.
     /// </summary>
     [InitializeOnLoad]
     internal static class ReloadTimings
     {
         internal const string EnabledPref = "Orbiters.Logger.MeasureReloads";
+        internal const string ByPackagePref = "Orbiters.Logger.MeasureReloadsByPackage";
         private const string OwnedSwitchPref = "Orbiters.Logger.OwnsReloadTimingsSwitch";
         private const string SwitchName = "EnableDomainReloadTimings";
         private const string OffsetKey = "Orbiters.Logger.ReloadTimings.Offset";
@@ -59,7 +61,7 @@ namespace Orbiters.Logger.Editor
                 return;
             }
 
-            SetUnitySwitch(true);
+            ApplySwitch();
             // This reload's tree is written once it ends, so after the log's current end.
             if (SessionState.GetString(OffsetKey, string.Empty).Length == 0)
             {
@@ -68,7 +70,10 @@ namespace Orbiters.Logger.Editor
 
             deadline = EditorApplication.timeSinceStartup + WaitSeconds;
             EditorApplication.update += Poll;
-            EditorApplication.update += HideUnityNotice;
+            if (ByPackage)
+            {
+                EditorApplication.update += HideUnityNotice;
+            }
         }
 
         private const string NoticeStart = "Diagnostic switches are active";
@@ -79,7 +84,7 @@ namespace Orbiters.Logger.Editor
         /// </summary>
         internal static bool IsOwnNotice(string condition)
         {
-            if (string.IsNullOrEmpty(condition) || !condition.StartsWith(NoticeStart, StringComparison.Ordinal) || !Enabled)
+            if (string.IsNullOrEmpty(condition) || !condition.StartsWith(NoticeStart, StringComparison.Ordinal) || !ByPackage)
             {
                 return false;
             }
@@ -141,7 +146,7 @@ namespace Orbiters.Logger.Editor
             }
         }
 
-        /// <summary>Whether reloads are measured. On by default; off restores Unity's diagnostic switch.</summary>
+        /// <summary>Whether reloads are measured. On by default.</summary>
         internal static bool Enabled
         {
             get => EditorPrefs.GetBool(EnabledPref, true);
@@ -150,21 +155,45 @@ namespace Orbiters.Logger.Editor
                 EditorPrefs.SetBool(EnabledPref, value);
                 if (value)
                 {
-                    SetUnitySwitch(true);
                     SessionState.SetString(OffsetKey, LogLength().ToString(CultureInfo.InvariantCulture));
                 }
-                else if (EditorPrefs.GetBool(OwnedSwitchPref, false))
-                {
-                    SetUnitySwitch(false);
-                    EditorPrefs.DeleteKey(OwnedSwitchPref);
-                }
+
+                ApplySwitch();
+            }
+        }
+
+        /// <summary>
+        /// Whether each package's part of a reload is read too, which needs Unity's diagnostic switch on. Off by default:
+        /// the switch leaks Unity's temporary memory at every reload.
+        /// </summary>
+        internal static bool ByPackage
+        {
+            get => EditorPrefs.GetBool(ByPackagePref, false);
+            set
+            {
+                EditorPrefs.SetBool(ByPackagePref, value);
+                ApplySwitch();
+            }
+        }
+
+        // The switch is on exactly while reloads are measured by package; a switch the Logger turned on is turned back off.
+        private static void ApplySwitch()
+        {
+            if (Enabled && ByPackage)
+            {
+                SetUnitySwitch(true);
+            }
+            else if (EditorPrefs.GetBool(OwnedSwitchPref, false))
+            {
+                SetUnitySwitch(false);
+                EditorPrefs.DeleteKey(OwnedSwitchPref);
             }
         }
 
         /// <summary>Whether Unity reports each package's part (its diagnostic switch is on).</summary>
         internal static bool Detailed => GetUnitySwitch() == true;
 
-        private static string LogPath
+        internal static string LogPath
         {
             get
             {
@@ -179,7 +208,7 @@ namespace Orbiters.Logger.Editor
             }
         }
 
-        private static long LogLength()
+        internal static long LogLength()
         {
             try
             {

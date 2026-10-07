@@ -1,5 +1,7 @@
 #if LOGGER_VRCSDK
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using UnityEditor;
 using UnityEngine;
 using VRC.SDK3A.Editor;
@@ -32,6 +34,11 @@ namespace Orbiters.Logger.Editor.VRChat
             public string Outcome = string.Empty;
             public bool Failed;
             public double WaitUntil;
+            // Editor.log length and Unity's callback trackers when the build steps ended and when the build did.
+            public long StepsLog = -1L;
+            public long EndLog = -1L;
+            public Dictionary<string, EditorTrackers.Total> StepsTrackers;
+            public Dictionary<string, EditorTrackers.Total> EndTrackers;
         }
 
         static AvatarUploadTimings()
@@ -134,6 +141,39 @@ namespace Orbiters.Logger.Editor.VRChat
             if (session != null)
             {
                 session.BuildEnded = Now;
+                Mark(false);
+            }
+        }
+
+        /// <summary>The last build step ran: what follows is Unity's asset bundle build.</summary>
+        internal static void StepsDone()
+        {
+            if (session != null && session.BuildStarted > 0L && session.BuildEnded == 0L)
+            {
+                Mark(true);
+            }
+        }
+
+        // Unity's code editor integration regenerates the project files after imports, like a postprocessor.
+        private const string ProjectSync = "SyncVS.PostprocessSyncProject";
+
+        private static bool IsAssetCallback(string tracker) =>
+            tracker.IndexOf(".OnPostprocess", StringComparison.Ordinal) > 0 || tracker.IndexOf(".OnPreprocess", StringComparison.Ordinal) > 0 ||
+            tracker == ProjectSync;
+
+        private static void Mark(bool steps)
+        {
+            long log = ReloadTimings.LogLength();
+            var trackers = EditorTrackers.Snapshot(IsAssetCallback);
+            if (steps)
+            {
+                session.StepsLog = log;
+                session.StepsTrackers = trackers;
+            }
+            else if (session.EndLog < 0L)
+            {
+                session.EndLog = log;
+                session.EndTrackers = trackers;
             }
         }
 
@@ -146,6 +186,7 @@ namespace Orbiters.Logger.Editor.VRChat
 
             AvatarBuildProbes.Abort();
             session.BuildEnded = Now;
+            Mark(false);
             session.Failed = true;
             session.Outcome = Reason("build failed", message);
         }
@@ -162,6 +203,7 @@ namespace Orbiters.Logger.Editor.VRChat
             if (session.BuildEnded == 0L)
             {
                 session.BuildEnded = Now;
+                Mark(false);
             }
 
             if (session.Failed)
@@ -238,6 +280,106 @@ namespace Orbiters.Logger.Editor.VRChat
             return what + ": " + (line.Length > 120 ? line.Substring(0, 120) + "…" : line);
         }
 
+        /// <summary>
+        /// Splits the asset bundle build (after the last build step): each asset postprocessor that ran meanwhile, by
+        /// its package, from Unity's callback trackers; then, from what Unity wrote to Editor.log, the script compilation
+        /// for the build, the asset imports and, as the rest, shader compilation, writing and compressing the bundle.
+        /// </summary>
+        private static void AddBundleParts(TimingProfile profile, Session current, double window)
+        {
+            const string phase = "Asset bundle";
+            var log = current.StepsLog >= 0L && current.EndLog > current.StepsLog ? BundleBuildLog.Read(ReloadTimings.LogPath, current.StepsLog, current.EndLog) : null;
+            var callbacks = EditorTrackers.Between(current.StepsTrackers, current.EndTrackers);
+            if ((log == null || !log.Found) && callbacks.Count == 0)
+            {
+                profile.Parts.Add(new TimingPart(TimingProfile.UnitySource, phase, "Building the avatar's asset bundle", window));
+                return;
+            }
+
+            log = log ?? new BundleBuildLog();
+            Dictionary<string, string> sources = null;
+            double allAssets = 0d;
+            double perAsset = 0d;
+            foreach (var (name, milliseconds, calls) in callbacks)
+            {
+                int dot = name.IndexOf('.');
+                string type = dot > 0 ? name.Substring(0, dot) : name;
+                string method = dot > 0 ? name.Substring(dot + 1) : string.Empty;
+                bool afterImports = method == "OnPostprocessAllAssets" || name == ProjectSync;
+                if (afterImports)
+                {
+                    allAssets += milliseconds;
+                }
+                else
+                {
+                    perAsset += milliseconds;
+                }
+
+                if (milliseconds < 20d)
+                {
+                    continue;
+                }
+
+                sources = sources ?? PostprocessorSources();
+                string times = calls > 1 ? " ×" + calls.ToString(CultureInfo.InvariantCulture) : string.Empty;
+                string label = name == ProjectSync
+                    ? "Code editor project files sync" + times
+                    : type + "." + method + times + (afterImports ? " (asset postprocessor, runs after every import)" : " (asset postprocessor)");
+                profile.Parts.Add(new TimingPart(sources.TryGetValue(type, out string source) ? source : TimingProfile.UnitySource, phase, label, milliseconds));
+            }
+
+            double claimed = allAssets + perAsset;
+            if (log.ScriptMilliseconds > 0d)
+            {
+                profile.Parts.Add(new TimingPart(TimingProfile.UnitySource, phase, "Compiling scripts for the build", log.ScriptMilliseconds));
+                claimed += log.ScriptMilliseconds;
+            }
+
+            if (log.Refreshes > 0)
+            {
+                double otherCallbacks = Math.Max(0d, log.CallbackMilliseconds - allAssets);
+                double imports = Math.Max(0d, log.RefreshMilliseconds - log.CallbackMilliseconds - perAsset);
+                string count = log.Imports > 0
+                    ? log.Imports.ToString(CultureInfo.InvariantCulture) + " for the build target (" + log.CachedImports.ToString(CultureInfo.InvariantCulture) + " from the cache)"
+                    : "for the build target";
+                profile.Parts.Add(new TimingPart(TimingProfile.UnitySource, phase, "Asset imports: " + count, imports));
+                if (otherCallbacks >= 50d)
+                {
+                    profile.Parts.Add(new TimingPart(TimingProfile.UnitySource, phase, "Other asset database callbacks", otherCallbacks));
+                }
+
+                claimed += imports + otherCallbacks;
+            }
+
+            string rest = (log.ShaderPasses > 0 ? "Compiling " + log.ShaderPasses.ToString(CultureInfo.InvariantCulture) + " shader passes, writing" : "Writing") +
+                          " and compressing the bundle" +
+                          (log.CompressedSize.Length > 0 ? " (" + log.CompressedSize + ", " + log.UncompressedSize + " uncompressed)" : string.Empty);
+            profile.Parts.Add(new TimingPart(TimingProfile.UnitySource, phase, rest, Math.Max(0d, window - claimed)));
+        }
+
+        // Asset postprocessors by the name Unity's trackers give them (the type without namespace), with their package.
+        private static Dictionary<string, string> PostprocessorSources()
+        {
+            var sources = new Dictionary<string, string>(StringComparer.Ordinal);
+            try
+            {
+                var assemblies = AssemblySources.Take();
+                foreach (var type in TypeCache.GetTypesDerivedFrom<AssetPostprocessor>())
+                {
+                    if (!sources.ContainsKey(type.Name))
+                    {
+                        sources[type.Name] = assemblies.ForType(type.FullName, type.Assembly.GetName().Name);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Unattributed postprocessors count as Unity's.
+            }
+
+            return sources;
+        }
+
         private static double Ms(long from, long to) => to > from ? (to - from) / (double)TimeSpan.TicksPerMillisecond : 0d;
 
         private static void Publish(TimingKind kind)
@@ -277,7 +419,7 @@ namespace Orbiters.Logger.Editor.VRChat
                     BuildSteps.AddTo(profile, runs);
                     if (lastStep > 0L)
                     {
-                        profile.Parts.Add(new TimingPart(TimingProfile.UnitySource, "Asset bundle", "Building the avatar's asset bundle", Ms(lastStep, current.BuildEnded)));
+                        AddBundleParts(profile, current, Ms(lastStep, current.BuildEnded));
                     }
                 }
 

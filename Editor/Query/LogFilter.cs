@@ -43,6 +43,75 @@ namespace Orbiters.Logger.Editor
             Grouped = Grouped,
             Sort = Sort
         };
+
+        /// <summary>
+        /// What keeps one occurrence out of the list under this spec, by the same rules as a <see cref="FilterState"/> pass:
+        /// <see cref="HiddenBy.None"/> when it shows, <see cref="HiddenBy.Gone"/> when no filter would bring it back.
+        /// </summary>
+        public HiddenBy WhatHides(LogStore store, int occurrence)
+        {
+            if (store == null || occurrence < 0 || occurrence >= store.Count || (store.FlagsAt(occurrence) & LogStore.Superseded) != 0)
+            {
+                return HiddenBy.Gone;
+            }
+
+            int id = store.MessageAt(occurrence);
+            ref var message = ref store.Message(id);
+            if (message.Resolved)
+            {
+                return HiddenBy.Gone;
+            }
+
+            var hidden = HiddenBy.None;
+            if (Muted.Count > 0 && Muted.Contains(store.Texts[store.Group(message.Group).Key]))
+            {
+                hidden |= HiddenBy.Muted;
+            }
+
+            if (!Query.IsEmpty)
+            {
+                bool found = message.Text > 0 && Query.Matches(store.Texts.Plain(message.Text)) ||
+                             Query.IncludeStack && message.Stack > 0 && Query.Matches(store.Texts.Plain(message.Stack));
+                if (!found)
+                {
+                    hidden |= HiddenBy.Search;
+                }
+            }
+
+            if ((LevelMask & (1 << (int)message.Level)) == 0)
+            {
+                hidden |= HiddenBy.Level;
+            }
+
+            if (HiddenSources.Count > 0 && HiddenSources.Contains(store.SourceOf(id).Key))
+            {
+                hidden |= HiddenBy.Source;
+            }
+
+            long time = store.TimeAt(occurrence);
+            if (HasRange && (time < From || time > To))
+            {
+                hidden |= HiddenBy.Range;
+            }
+
+            return hidden;
+        }
+    }
+
+    /// <summary>What keeps a log out of the list (<see cref="FilterSpec.WhatHides"/>).</summary>
+    [Flags]
+    internal enum HiddenBy : byte
+    {
+        None = 0,
+        Search = 1,
+        Level = 2,
+        Source = 4,
+        /// <summary>Its message was hidden from the list ("Hide" on a row).</summary>
+        Muted = 8,
+        /// <summary>Outside the time range brushed on the timeline.</summary>
+        Range = 16,
+        /// <summary>Trimmed or cleared from the store, or a compiler message reported again or fixed since.</summary>
+        Gone = 32
     }
 
     /// <summary>

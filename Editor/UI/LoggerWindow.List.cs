@@ -357,13 +357,7 @@ namespace Orbiters.Logger.Editor
             if (!query.IsEmpty)
             {
                 reasons.Add("the search");
-                emptyActions.Add(LoggerUi.Pill("Clear search", () =>
-                {
-                    searchBox.Value = string.Empty;
-                    search = string.Empty;
-                    ApplyQuery(0d);
-                    searchBox.Sync();
-                }, "ghost", LoggerGlyph.Close));
+                emptyActions.Add(LoggerUi.Pill("Clear search", () => SetSearch(string.Empty), "ghost", LoggerGlyph.Close));
             }
 
             if (levelMask != 7)
@@ -440,6 +434,56 @@ namespace Orbiters.Logger.Editor
             }
 
             return grouped ? state.GroupRowOf(key) : state.RowOf(key);
+        }
+
+        /// <summary>
+        /// Turns off only the filters <paramref name="hidden"/> names for <paramref name="occurrence"/> (its level, its
+        /// source, its hidden message, the search, the time range) so it can show; what changed, for a toast.
+        /// </summary>
+        private List<string> RevealOccurrence(LogStore store, int occurrence, HiddenBy hidden)
+        {
+            var changes = new List<string>();
+            int id = store.MessageAt(occurrence);
+            var message = store.Message(id);
+            if ((hidden & HiddenBy.Level) != 0)
+            {
+                levelMask |= 1 << (int)message.Level;
+                UpdateLevelPills();
+                changes.Add(LevelNoun(message.Level) + "s turned on");
+            }
+
+            if ((hidden & HiddenBy.Source) != 0)
+            {
+                var source = store.SourceOf(id);
+                hiddenSources.RemoveAll(key => string.Equals(key, source.Key, StringComparison.OrdinalIgnoreCase));
+                changes.Add(source.Name + " turned on");
+            }
+
+            if ((hidden & HiddenBy.Muted) != 0)
+            {
+                muted.Remove(store.Texts[store.Group(message.Group).Key]);
+                changes.Add("its message unhidden");
+            }
+
+            if ((hidden & HiddenBy.Search) != 0)
+            {
+                SetSearch(string.Empty);
+                changes.Add("search cleared");
+            }
+
+            if ((hidden & HiddenBy.Range) != 0)
+            {
+                rangeFrom = rangeTo = 0;
+                changes.Add("whole session shown");
+            }
+
+            if (changes.Count > 0)
+            {
+                QueueRefilter();
+                chromeDirty = true;
+            }
+
+            return changes;
         }
 
         private void ClearSelection()
@@ -910,14 +954,7 @@ namespace Orbiters.Logger.Editor
             evt.menu.AppendAction("Show only " + source.Name, _ => SetOnlySource(source.Key));
             evt.menu.AppendAction("Hide " + source.Name, _ => SetSourceHidden(source.Key, true));
             evt.menu.AppendAction("Hide messages like this" + suffix + "\tDelete", _ => HideSelected());
-            evt.menu.AppendAction("Search for this text", _ =>
-            {
-                string text = RichText.FirstLine(store.Texts.Plain(message.Text), 120);
-                searchBox.Value = text;
-                search = text;
-                ApplyQuery(0d);
-                searchBox.Sync();
-            });
+            evt.menu.AppendAction("Search for this text", _ => SetSearch(RichText.FirstLine(store.Texts.Plain(message.Text), 120)));
             evt.menu.AppendSeparator();
             evt.menu.AppendAction(grouped ? "Show each log" : "Group logs with the same text", _ => SetGrouped(!grouped));
         }

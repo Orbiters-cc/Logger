@@ -32,13 +32,11 @@ namespace Orbiters.Logger.Editor
                 }
 
                 element.AddToClassList(PressedClass);
-                long now = DateTime.UtcNow.Ticks;
-                if (now - lastPress < TimeSpan.TicksPerMillisecond * 25)
+                if (IsRepeatPress(ref lastPress))
                 {
                     return;
                 }
 
-                lastPress = now;
                 handledByPress = true;
                 element.schedule.Execute(() => handledByPress = false).StartingIn(800);
                 // Keep Unity's Clickable from capturing the pointer: a menu or popup opened here takes the pointer-up,
@@ -77,6 +75,22 @@ namespace Orbiters.Logger.Editor
                     evt.StopPropagation();
                 }
             });
+        }
+
+        /// <summary>
+        /// True for a pointer-down arriving within 25 ms of the last one <paramref name="lastPress"/> recorded: the same
+        /// press delivered again, which must not act twice. Otherwise records it and returns false.
+        /// </summary>
+        internal static bool IsRepeatPress(ref long lastPress)
+        {
+            long now = DateTime.UtcNow.Ticks;
+            if (now - lastPress < TimeSpan.TicksPerMillisecond * 25)
+            {
+                return true;
+            }
+
+            lastPress = now;
+            return false;
         }
 
         // A button inside a pressable one (a source row's "Only") answers its own press: the outer handler runs first,
@@ -470,6 +484,14 @@ namespace Orbiters.Logger.Editor
 
         public void Show(string text, bool error = false)
         {
+            // The same toast again while it still shows (a click repeated on what failed): it stays longer, no copy stacks.
+            if (childCount > 0 && this[childCount - 1] is VisualElement newest && newest.userData is ShownToast shown &&
+                shown.Text == text && shown.Error == error && !newest.ClassListContains("lg-toast--leave"))
+            {
+                shown.Dismissal.ExecuteLater(error ? 7000 : 2600);
+                return;
+            }
+
             var toast = new VisualElement();
             toast.AddToClassList("lg-toast");
             if (error)
@@ -489,7 +511,15 @@ namespace Orbiters.Logger.Editor
 
             Add(toast);
             LoggerUi.Enter(toast, "lg-toast--enter", 20);
-            toast.schedule.Execute(() => Dismiss(toast)).StartingIn(error ? 7000 : 2600);
+            var dismissal = toast.schedule.Execute(() => Dismiss(toast)).StartingIn(error ? 7000 : 2600);
+            toast.userData = new ShownToast { Text = text, Error = error, Dismissal = dismissal };
+        }
+
+        private sealed class ShownToast
+        {
+            public string Text;
+            public bool Error;
+            public IVisualElementScheduledItem Dismissal;
         }
 
         private static void Dismiss(VisualElement toast)

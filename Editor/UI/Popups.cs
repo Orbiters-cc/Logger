@@ -265,8 +265,10 @@ namespace Orbiters.Logger.Editor
                 () => RemoteExplanations.Enabled, on => RemoteExplanations.Enabled = on));
 
             body.Add(Section("Timings", "Logged as they happen, with each package's part."));
-            body.Add(Switch("Script reloads", "What each package costs at every reload. Turns on Unity's reload timing diagnostics.",
+            body.Add(Switch("Script reloads", "How long every reload takes, and which steps of it.",
                 () => ReloadTimings.Enabled, on => ReloadTimings.Enabled = on));
+            body.Add(Switch("Script reloads by package", "What each package costs at every reload. Turns on Unity's reload timing diagnostics, which leak a little editor memory per reload and flood the log with allocation warnings in Unity 2022.3: leave it off unless you are hunting a slow reload.",
+                () => ReloadTimings.ByPackage, on => ReloadTimings.ByPackage = on));
             body.Add(Switch("Entering Play Mode", "From the Play button to the first frames, with each tool's avatar build steps.",
                 () => PlayModeTimings.Enabled, on => PlayModeTimings.Enabled = on));
             body.Add(Switch("Avatar builds and uploads", "Each tool's build steps, the asset bundle and the upload (VRChat SDK).",

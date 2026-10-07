@@ -149,5 +149,37 @@ namespace Orbiters.Logger.Editor.Tests
             Assert.AreEqual(LogStore.TimingSource, store.SourceOf(id).Name);
             Assert.AreEqual("VRCFury 800 ms", store.Texts[store.Message(id).Callsite]);
         }
+
+        [Test]
+        public void BundleBuildLogReadsUnitysOwnTimings()
+        {
+            var log = BundleBuildLog.Parse(new[]
+            {
+                "Asset Pipeline Refresh (id=0526e2dbcb988684a8bf4cc7554a2467): Total: 10.235 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)",
+                "\tSummary:",
+                "\t\tImports: total=1439 (actual=5, local cache=1434, cache server=0)",
+                "\t\tAsset DB Callback time: managed=9190 ms, native=30 ms",
+                "\tPostProcessAllAssets: 8708.480ms",
+                "Asset Pipeline Refresh (id=001002d15efba1d47bd8b8837f49dc10): Total: 0.110 seconds - Initiated by RefreshV2(NoUpdateAssetOptions)",
+                "ExitCode: 0 Duration: 1s451ms",
+                "ExitCode: 0 Duration: 1m5s127ms",
+                "Compiling shader \"Standard\" pass \"FORWARD\" (vp)",
+                "Compiling shader \"Standard\" pass \"FORWARD\" (fp)",
+                "Total compressed size 106.0 MB. Total uncompressed size 266.1 MB.",
+                "Total compressed size 1.1 KB. Total uncompressed size 4.2 KB.",
+            });
+            Assert.AreEqual(2, log.Refreshes);
+            Assert.AreEqual(10345d, log.RefreshMilliseconds, 0.01d);
+            Assert.AreEqual(9190d, log.CallbackMilliseconds, 0.01d);
+            Assert.AreEqual(1439, log.Imports);
+            Assert.AreEqual(5, log.ActualImports);
+            Assert.AreEqual(1434, log.CachedImports);
+            Assert.AreEqual(1451d + 65127d, log.ScriptMilliseconds, 0.01d);
+            Assert.AreEqual(2, log.ShaderPasses);
+            Assert.AreEqual("106.0 MB", log.CompressedSize);
+            Assert.AreEqual("266.1 MB", log.UncompressedSize);
+            Assert.IsTrue(log.Found);
+            Assert.IsFalse(BundleBuildLog.Parse(new[] { "Unrelated line" }).Found);
+        }
     }
 }

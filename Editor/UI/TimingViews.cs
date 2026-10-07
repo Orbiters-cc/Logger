@@ -354,6 +354,7 @@ namespace Orbiters.Logger.Editor
         private readonly List<string> palette = new List<string>();
         private int current = -1;
         private int hover = -1;
+        private long lastPress;
 
         public event Action<int> MessageClicked;
 
@@ -369,8 +370,11 @@ namespace Orbiters.Logger.Editor
                 int column = ColumnAt(evt.localPosition.x);
                 if (evt.button == 0 && column >= 0 && column < entries.Count && column != current)
                 {
-                    MessageClicked?.Invoke(entries[column].Message);
                     evt.StopPropagation();
+                    if (!LoggerUi.IsRepeatPress(ref lastPress))
+                    {
+                        MessageClicked?.Invoke(entries[column].Message);
+                    }
                 }
             });
         }

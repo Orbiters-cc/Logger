@@ -1,5 +1,27 @@
 # Logger
 
+## 0.2.2 — 2026-10-07
+
+- Script reload timings no longer turn on Unity's `EnableDomainReloadTimings` diagnostic switch by default: in Unity
+  2022.3 it leaks about 100 KB of the editor's temporary memory at every reload, and Unity then reports the leak on
+  every editor tick (tens of thousands of “Allocation of 49 bytes at…” lines, gigabytes of Editor.log). Reloads are
+  still measured, step by step, from Unity's basic reload profile; the new “Script reloads by package” setting turns
+  the switch back on for the per-package split.
+- Messages that only differ by a memory address are one group (Unity lists each leaked block of its temporary memory
+  as “Allocation of 49 bytes at 000002848112DD10”, dozens per frame), and both Unity notices are explained, with how to
+  find what holds the memory.
+- Avatar builds: the asset bundle part is split. Each asset postprocessor that ran during it is timed and given to its
+  package (from Unity's own callback trackers), with Unity's script compilation for the build, the asset imports for the
+  build target, the code editor's project sync, and the shader compilation, writing and compression of the bundle (with
+  its size) as the rest.
+- Explanations for "This file was already uploaded" (thumbnail or bundle), "Failed to upload avatar!" and My Avatar's
+  thumbnail check; the SDK clearing a blueprint ID now says the ID can come back with Undo when the avatar is yours.
+- Clicking a bar of a timing chart (or a timeline mark) always shows that timing. A filter hiding it was a dead end
+  ("That timing is hidden by the filters", e.g. a successful upload, which is a log, with only warnings and errors
+  shown): only the filters that hide it are turned off now, and a toast says which. A group row showing a later log
+  of the same text switches to the list so the clicked one shows. One press acts once, and the same toast no longer
+  stacks.
+
 ## 0.2.1 — 2026-10-07
 
 - Undo history timeline: the snapshot of a step shows the project right after it (it could show it before: it was
@@ -121,7 +143,8 @@ The sliders button opens the settings:
 - **Memory**: how many logs to keep (250K to 6M, 3M by default); the oldest fifth goes when the limit is reached.
 - **Unity's console**: open it, or read it again from scratch.
 - **Explanations from Orbiters**: keep the explanations up to date from Orbiters between releases (on by default).
-- **Timings**: measure script reloads, entering Play Mode, and avatar builds and uploads (all on by default).
+- **Timings**: measure script reloads, entering Play Mode, and avatar builds and uploads (all on by default), and
+  script reloads by package (off by default: it leaks editor memory at every reload).
 - **Beta**: the undo history timeline.
 
 **Clear** (Ctrl+L) empties the Logger and Unity's console. Compile errors that still stand stay, as in Unity.
@@ -138,14 +161,17 @@ as stacked columns: when a package suddenly costs more, it shows. The timeline h
 stacked by package; click a mark to show its log.
 
 - **Script reloads**: Unity writes a "Domain Reload Profiling" tree to Editor.log after each reload. With its
-  `EnableDomainReloadTimings` diagnostic switch on (the Logger turns it on while reloads are measured, and back off when
-  you turn measuring off) the tree lists every type and method that runs on load, every before/after-reload callback
+  `EnableDomainReloadTimings` diagnostic switch on (the Logger turns it on only while “Script reloads by package” is on,
+  and back off when you turn it off; in Unity 2022.3 the switch leaks temporary memory at every reload) the tree lists every type and method that runs on load, every before/after-reload callback
   and every window restored; the Logger reads it back on a worker thread and gives each entry to the package its code
   belongs to. Unity's console notice about the switch is hidden while it is the only one on.
 - **Avatar builds and uploads** (VRChat SDK, through the optional `Orbiters.Logger.Editor.VRChat` assembly): from
   Build & Publish or Build & Test to the end of the upload. A probe sits in front of each group of build steps in the
   SDK's list, so each tool's step (VRCFury, MCB, My Avatar, ReFit, Orbiters Toolkit, the SDK's own…) is timed without
-  touching it, then the asset bundle and the upload.
+  touching it, then the asset bundle and the upload. The asset bundle is split too: Unity times every callback it runs,
+  so each asset postprocessor that ran during it (TextMesh Pro's, Poiyomi's…) gets its time and package; the lines
+  Unity times itself in Editor.log give the script compilation for the build, the asset imports for the build target
+  and the bundle's size; the rest is shader compilation, writing and compressing the bundle.
 - **Entering Play Mode**: leaving Edit Mode, the script reload by package, the avatar build steps VRCFury runs on each
   avatar of the scene (merged across avatars), then the scene load and first frames.
 

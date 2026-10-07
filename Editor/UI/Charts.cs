@@ -303,6 +303,7 @@ namespace Orbiters.Logger.Editor
         private float pressX;
         private float dragX;
         private int pointerId = -1;
+        private long lastLanePress;
 
         public event Action<long, long> RangeSelected;
         public event Action<long> TimeClicked;
@@ -329,8 +330,11 @@ namespace Orbiters.Logger.Editor
                 int index = LaneMarkAt(evt.localPosition.x);
                 if (evt.button == 0 && index >= 0 && index < timingEntries.Count)
                 {
-                    TimingClicked?.Invoke(timingEntries[index].Message);
                     evt.StopPropagation();
+                    if (!LoggerUi.IsRepeatPress(ref lastLanePress))
+                    {
+                        TimingClicked?.Invoke(timingEntries[index].Message);
+                    }
                 }
             });
             timingLane.style.display = DisplayStyle.None;

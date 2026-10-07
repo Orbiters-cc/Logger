@@ -498,7 +498,7 @@ namespace Orbiters.Logger.Editor
 
         private int GroupFor(int text, LogLevel level)
         {
-            int keyText = Grouping == GroupingMode.SameText ? text : Texts.Intern(Similar(Texts.Plain(text)));
+            int keyText = Grouping == GroupingMode.SameText ? AddressesFolded(text) : Texts.Intern(Similar(Texts.Plain(text)));
             long key = ((long)keyText << 2) | (long)level;
             if (groupIndex.TryGetValue(key, out int id))
             {
@@ -517,6 +517,60 @@ namespace Orbiters.Logger.Editor
             groupCount = id + 1;
             groupIndex[key] = id;
             return id;
+        }
+
+        // Memory addresses never tell two messages apart: Unity lists each leaked allocation with its own
+        // ("Allocation of 49 bytes at 000002848112DD10"), dozens of rows of one message without this.
+        private int AddressesFolded(int text)
+        {
+            string plain = Texts.Plain(text);
+            string folded = FoldAddresses(plain);
+            return ReferenceEquals(folded, plain) ? text : Texts.Intern(folded);
+        }
+
+        /// <summary>
+        /// The text with memory addresses (16 hex digits, or 0x and 6 to 16 of them) replaced by <c>#</c>; the same string
+        /// instance when it has none.
+        /// </summary>
+        public static string FoldAddresses(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return text;
+            }
+
+            StringBuilder builder = null;
+            int copied = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                if (i > 0 && char.IsLetterOrDigit(text[i - 1]))
+                {
+                    continue;
+                }
+
+                bool prefixed = i + 1 < text.Length && text[i] == '0' && (text[i + 1] == 'x' || text[i + 1] == 'X');
+                int start = prefixed ? i + 2 : i, j = start;
+                bool digit = false;
+                while (j < text.Length && IsHex(text[j]))
+                {
+                    digit |= char.IsDigit(text[j]);
+                    j++;
+                }
+
+                int length = j - start;
+                bool whole = j == text.Length || !char.IsLetterOrDigit(text[j]);
+                if (!whole || !digit || (prefixed ? length < 6 || length > 16 : length != 16))
+                {
+                    continue;
+                }
+
+                builder = builder ?? new StringBuilder(text.Length);
+                builder.Append(text, copied, i - copied).Append('#');
+                copied = j;
+                i = j - 1;
+            }
+
+            return builder == null ? text : builder.Append(text, copied, text.Length - copied).ToString();
         }
 
         /// <summary>The text with numbers, hashes and ids replaced by <c>#</c>: "Loaded 12 assets in 3.4 ms" → "Loaded # assets in # ms".</summary>

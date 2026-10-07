@@ -146,6 +146,22 @@ namespace Orbiters.Logger.Editor.Tests
         }
 
         [Test]
+        public void SameTextGroupsMessagesThatOnlyDifferByAMemoryAddress()
+        {
+            var store = new LogStore();
+            store.Add(1000, "Allocation of 49 bytes at 000002848112DD10", string.Empty, LogVariant.Log);
+            store.Add(1001, "Allocation of 49 bytes at 0000028480FCBA80", string.Empty, LogVariant.Log);
+            store.Add(1002, "Allocation of 81 bytes at 0000028480FCBA80", string.Empty, LogVariant.Log);
+
+            Assert.AreEqual(store.Message(store.MessageAt(0)).Group, store.Message(store.MessageAt(1)).Group, "only the address differs");
+            Assert.AreNotEqual(store.Message(store.MessageAt(0)).Group, store.Message(store.MessageAt(2)).Group, "another size is another message");
+            Assert.AreEqual("at # and #", LogStore.FoldAddresses("at 0x7ff6a2b4c010 and 000002848112DD10"));
+            const string asset = "Asset 35de1ecde25af3ed71054f4ed6ea89f0 missing";
+            Assert.AreSame(asset, LogStore.FoldAddresses(asset), "a GUID is not an address");
+            Assert.AreEqual("Build 20261007", LogStore.FoldAddresses("Build 20261007"), "short numbers stay");
+        }
+
+        [Test]
         public void CompileErrorsAreReplacedAndResolved()
         {
             var store = new LogStore();
