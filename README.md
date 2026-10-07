@@ -1,7 +1,8 @@
 # Logger
 
-## Unreleased
+## 0.1.2 — 2026-10-07
 
+- Commits and releases on the timeline carry a small label.
 - With Unit Git 0.2.5 or newer, every Git command Unit Git runs is a log under the Unit Git source: the command and its
   result as the message, its output (timing, stdout, stderr) in the details. They don't go to Unity's console.
 - A commit shows on the timeline as soon as it is made (from Unit Git or any Git client), and project pins sit in a lane
