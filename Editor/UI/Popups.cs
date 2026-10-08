@@ -260,6 +260,28 @@ namespace Orbiters.Logger.Editor
             body.Add(Switch("Compact rows", "One line per log, without the line it was logged from.", () => window.IsCompact, window.SetCompact));
             body.Add(Switch("Monospace font", "Messages in a fixed-width font, like code.", () => window.IsMonospace, window.SetMonospace));
 
+            body.Add(Section("Activity chart", "How much time the chart above the list covers. The list and the counts always cover every log."));
+            var windows = LoggerUi.Box("lg-limits");
+            int currentWindow = TimelineWindow.Minutes;
+            foreach (int minutes in TimelineWindow.Choices)
+            {
+                int captured = minutes;
+                var button = LoggerUi.Pill(TimelineWindow.Label(minutes), () =>
+                {
+                    TimelineWindow.Minutes = captured;
+                    foreach (var other in windows.Children())
+                    {
+                        other.EnableInClassList("lg-button--primary", other.userData is int value && value == captured);
+                    }
+                }, currentWindow == minutes ? "primary" : null, null, minutes == 0
+                    ? "Every log of the session: the chart stretches as it grows, so an old burst shrinks"
+                    : "Only the last " + TimelineWindow.Label(minutes) + ", at a steady scale");
+                button.userData = minutes;
+                windows.Add(button);
+            }
+
+            body.Add(windows);
+
             body.Add(Section("Explanations", "What known messages mean and how to fix them."));
             body.Add(Switch("Explanations from Orbiters", "Keep them up to date from Orbiters between releases; members signed in through Orbiters Toolkit also get the members' entries.",
                 () => RemoteExplanations.Enabled, on => RemoteExplanations.Enabled = on));

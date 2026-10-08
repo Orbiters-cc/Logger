@@ -14,6 +14,8 @@ namespace Orbiters.Logger.Editor
         private SearchBox searchBox;
         private Button sourcesButton;
         private Label sourcesBadge;
+        private Button consoleToggle;
+        private VisualElement consoleSwitch;
         private SegmentedControl viewToggle;
         private VisualElement statusArea;
         private Label statusText;
@@ -83,11 +85,46 @@ namespace Orbiters.Logger.Editor
             statusArea.Add(statusText);
             bar.Add(statusArea);
 
+            consoleToggle = new Button();
+            consoleToggle.AddToClassList("lg-tool-button");
+            consoleToggle.AddToClassList("lg-console-toggle");
+            consoleSwitch = LoggerUi.Box("lg-switch", PickingMode.Ignore);
+            consoleSwitch.AddToClassList("lg-switch--mini");
+            consoleSwitch.Add(LoggerUi.Box("lg-switch__knob", PickingMode.Ignore));
+            consoleToggle.Add(consoleSwitch);
+            consoleToggle.Add(LoggerUi.Text("Replace console", "lg-tool-button__label"));
+            LoggerUi.Press(consoleToggle, ToggleConsoleReplacement);
+            UpdateConsoleToggle(ConsoleReplacement.Enabled);
+            bar.Add(consoleToggle);
+
             var actions = LoggerUi.Box("lg-topbar__actions");
             actions.Add(LoggerUi.Icon(LoggerGlyph.Trash, "Clear (Ctrl+L). Also clears Unity's console; compile errors stay.", ClearLogs));
             actions.Add(LoggerUi.Icon(LoggerGlyph.Sliders, "Settings", () => SettingsPopup.Show(actions.worldBound, this)));
             bar.Add(actions);
             return bar;
+        }
+
+        // The switch flips at once; closing the open Consoles (turning it on) waits for the next tick.
+        private void ToggleConsoleReplacement()
+        {
+            bool on = !ConsoleReplacement.Enabled;
+            UpdateConsoleToggle(on);
+            ConsoleReplacement.SetEnabled(on);
+            if (on)
+            {
+                consoleToggle.schedule.Execute(ConsoleReplacement.ReplaceOpenConsoles);
+            }
+
+            ShowToast(on ? "The Logger replaces Unity's Console" : "Unity's Console opens as usual again");
+        }
+
+        private void UpdateConsoleToggle(bool on)
+        {
+            consoleSwitch.EnableInClassList("lg-switch--on", on);
+            consoleToggle.tooltip = on
+                ? "Replace console: on\nThe Logger takes the place of Unity's Console: when Unity starts, a Console tab becomes a Logger tab, " +
+                  "and Window › General › Console (Ctrl+Shift+C) or a click on the status bar opens the Logger.\nClick to keep Unity's Console."
+                : "Replace console: off\nUnity's Console opens as usual.\nClick to let the Logger take its place (Consoles open now are closed).";
         }
 
         private Button LevelPill(LogLevel level, string tooltip)
@@ -341,6 +378,7 @@ namespace Orbiters.Logger.Editor
             sourcesBadge.text = hiddenSources.Count.ToString();
             sourcesBadge.style.display = hiddenSources.Count > 0 ? DisplayStyle.Flex : DisplayStyle.None;
             sourcesButton.EnableInClassList("lg-tool-button--on", hiddenSources.Count > 0);
+            UpdateConsoleToggle(ConsoleReplacement.Enabled);
 
             var history = LogCapture.History;
             string status = history != null

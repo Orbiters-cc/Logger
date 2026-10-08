@@ -1,5 +1,19 @@
 # Logger
 
+## 0.2.3 — 2026-10-08
+
+- **Activity chart window** (settings › Activity chart): the chart above the list covers the whole history (as before, so it
+  stretches as the session grows and an old burst of logs shrinks to a sliver) or only the last 5 minutes, 15 minutes,
+  30 minutes, 1 hour or 6 hours, at a steady scale. The sparklines follow it; the list, the counts and a message's
+  frequency chart always cover every log.
+- **Replace console** (top bar, on by default): the Logger takes the place of Unity's Console. When Unity starts, a
+  Console tab becomes a Logger tab at the same place (shown only if the Console was), or is just closed when a Logger
+  is already open (a Logger hidden behind another tab comes to where the shown Console was). Window › General ›
+  Console, Ctrl+Shift+C and a click on the status bar open the Logger instead. A Console open when the Logger is
+  installed stays until the next start. Turn it off to keep Unity's Console; turning it back on closes the Consoles
+  open then. If a Unity version changes the docking internals it relies on, the Logger opens as its own window, the
+  Console stays and one warning says why.
+
 ## 0.2.2 — 2026-10-07
 
 - Script reload timings no longer turn on Unity's `EnableDomainReloadTimings` diagnostic switch by default: in Unity
@@ -89,9 +103,10 @@ Unity 2022.3. No dependency: the Logger keeps working when other packages don't 
 
 ## Get started
 
-Install **Logger** from the Orbiters VPM repository, then open **Tools › Orbiters › Logger** (Ctrl+Alt+L) and dock it
-where the Console was. It shows everything logged since Unity started, including what was logged before it was
-installed.
+Install **Logger** from the Orbiters VPM repository, then open **Tools › Orbiters › Logger** (Ctrl+Alt+L). From the
+next start of Unity it takes the Console's place in your layout, and Window › General › Console (Ctrl+Shift+C) opens
+it (**Replace console** in its top bar turns that off). It shows everything logged since Unity started, including what
+was logged before it was installed.
 
 ## The window
 
@@ -102,6 +117,8 @@ installed.
   button searches stack traces too. Enter applies at once, Escape clears.
 - **Sources**: show or hide where logs come from, or show only one ("Only" on hover). Counts follow the search and
   levels.
+- **Replace console** (on by default): the Logger stands in for Unity's Console, at start-up and whenever the
+  Console is opened. Off, Unity's Console opens as usual.
 - **List / Groups**: every log in time order, or one row per text with its count and activity.
 - **Timeline**: hover reads the time and counts; click scrolls the list there; drag selects a time range (shown in
   a chip with ✕); double-click or Escape shows the whole session again.

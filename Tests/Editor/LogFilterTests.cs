@@ -27,6 +27,30 @@ namespace Orbiters.Logger.Editor.Tests
             FilterState.Compute(store.View(), spec, store.Sources.All, null, store.FirstTime, store.LastTime, buckets, null);
 
         [Test]
+        public void ATimeWindowLeavesOlderLogsOutOfTheChartOnly()
+        {
+            var store = Sample();
+            long windowStart = TimeSpan.TicksPerSecond * 4;
+            var windowed = FilterState.Compute(store.View(), new FilterSpec(), store.Sources.All, null, windowStart, store.LastTime, 10, null);
+            Assert.IsTrue(windowed.ChartClips);
+            Assert.AreEqual(3, Sum(windowed.Timeline), "only the logs at 4, 5 and 6 s are in the chart");
+            Assert.AreEqual(6, windowed.RowCount, "the list still has every log");
+            Assert.AreEqual(3, windowed.LevelCounts[(int)LogLevel.Info], "and so do the counts");
+
+            var whole = Run(store, new FilterSpec());
+            Assert.IsFalse(whole.ChartClips);
+            Assert.AreEqual(6, Sum(whole.Timeline));
+        }
+
+        [Test]
+        public void TheTimelineWindowStartsAtTheOldestLogOrSlides()
+        {
+            long now = TimeSpan.TicksPerMinute * 100;
+            Assert.AreEqual(5L, TimelineWindow.From(5L, now, 0), "all history starts at the oldest log");
+            Assert.AreEqual(now - TimeSpan.TicksPerMinute * 15, TimelineWindow.From(5L, now, 15), "a window slides with the end");
+        }
+
+        [Test]
         public void EverythingShowsByDefault()
         {
             var store = Sample();

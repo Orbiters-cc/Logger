@@ -152,6 +152,8 @@ namespace Orbiters.Logger.Editor
 
         public long ChartFrom;
         public long ChartTo;
+        /// <summary>The chart starts after the oldest log (a time window): older logs stay out of its buckets and sparklines.</summary>
+        public bool ChartClips;
         public int Buckets;
         public int[] Timeline;
         public int[] Sparks;
@@ -183,6 +185,7 @@ namespace Orbiters.Logger.Editor
                 Texts = view.Texts,
                 ChartFrom = chartFrom,
                 ChartTo = Math.Max(chartTo, chartFrom + TimeSpan.TicksPerSecond),
+                ChartClips = view.Count > 0 && chartFrom > view.Times[0],
                 Buckets = Math.Max(0, buckets)
             };
 
@@ -430,7 +433,7 @@ namespace Orbiters.Logger.Editor
                 bool visible = (pass & ViewBits) == ViewBits;
                 ref var message = ref messages[m];
                 int level = (int)message.Level;
-                if (visible && chart)
+                if (visible && chart && (!ChartClips || time >= chartFrom))
                 {
                     long offset = time - chartFrom;
                     int bucket = offset <= 0 ? 0 : offset >= span ? buckets - 1 : (int)(offset * buckets / span);

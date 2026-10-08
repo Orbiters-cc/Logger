@@ -2196,6 +2196,41 @@
     background-color: #ffffff;
 }
 
+/* The top bar's "Replace console": a tool button holding a small switch. */
+.lg-switch--mini {
+    width: 24px;
+    height: 14px;
+    margin: 0 7px 0 0;
+    border-radius: 7px;
+    background-color: #565656;
+}
+
+.lg-switch--mini .lg-switch__knob {
+    left: 2px;
+    top: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    background-color: #bdbdbd;
+}
+
+.lg-switch--mini.lg-switch--on {
+    background-color: var(--lg-accent);
+}
+
+.lg-switch--mini.lg-switch--on .lg-switch__knob {
+    left: 12px;
+    background-color: #ffffff;
+}
+
+.lg-console-toggle {
+    padding-left: 8px;
+}
+
+.lg-root--s .lg-switch--mini {
+    margin-right: 0;
+}
+
 .lg-limits {
     flex-direction: row;
     flex-wrap: wrap;

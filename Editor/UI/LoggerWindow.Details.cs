@@ -533,7 +533,8 @@ namespace Orbiters.Logger.Editor
                 return;
             }
 
-            long chartFrom = state.ChartFrom;
+            // A message's frequency covers the whole session, whatever window the activity chart shows.
+            long chartFrom = store.Count > 0 ? store.FirstTime : state.ChartFrom;
             long chartTo = Math.Max(state.ChartTo, store.LastTime);
             int buckets = Mathf.Clamp((int)(Math.Max(120f, frequencyChart.layout.width) / 4f), 30, 240);
             var values = new int[buckets];

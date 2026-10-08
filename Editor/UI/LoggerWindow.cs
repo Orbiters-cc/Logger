@@ -56,6 +56,7 @@ namespace Orbiters.Logger.Editor
         private bool built;
         private bool visible = true;
         private int seenMarkers = -1;
+        private int seenWindow = TimelineWindow.Version;
         private int seenTimings = -1;
         private UndoTimelineView undoView;
 
@@ -247,8 +248,8 @@ namespace Orbiters.Logger.Editor
             }
 
             long now = LogCapture.Now;
-            long chartFrom = store.Count > 0 ? store.FirstTime : now - TimeSpan.TicksPerMinute;
             long chartTo = Math.Max(store.LastTime, now);
+            long chartFrom = store.Count > 0 ? TimelineWindow.From(store.FirstTime, chartTo, TimelineWindow.Minutes) : now - TimeSpan.TicksPerMinute;
             if (chartTo - chartFrom < TimeSpan.TicksPerSecond * 30)
             {
                 chartTo = chartFrom + TimeSpan.TicksPerSecond * 30;
@@ -359,6 +360,12 @@ namespace Orbiters.Logger.Editor
             else if (store.Version != seenVersion)
             {
                 Catchup(store, now);
+            }
+
+            if (seenWindow != TimelineWindow.Version)
+            {
+                seenWindow = TimelineWindow.Version;
+                QueueRefilter();
             }
 
             if (specDirty && now >= specDueAt)
