@@ -18,12 +18,6 @@ namespace Orbiters.Logger.Editor
         private const double RefreshHours = 6d;
         private const int TimeoutSeconds = 20;
 
-        /// <summary>The address of the list; Orbiters Toolkit points it at the server its environment uses.</summary>
-        internal static Func<string> Endpoint = () => "https://api.orbiters.cc/logger/explanations";
-
-        /// <summary>The signed-in member's token, or null; set by Orbiters Toolkit when installed.</summary>
-        internal static Func<string> Token = () => null;
-
         private static UnityWebRequest request;
         private static string requestUrl;
         private static bool started;
@@ -31,7 +25,12 @@ namespace Orbiters.Logger.Editor
         static RemoteExplanations()
         {
             EditorApplication.update += Start;
+            // A new account or server: its own list.
+            OrbitersLink.Changed += () => Refresh(force: true);
         }
+
+        /// <summary>The address of the list on the server in use (Orbiters Toolkit can point at another one).</summary>
+        private static string Endpoint() => OrbitersLink.ApiUrl("logger/explanations");
 
         internal static bool Enabled
         {
@@ -123,7 +122,7 @@ namespace Orbiters.Logger.Editor
                     request.SetRequestHeader("If-None-Match", "\"" + revision + "\"");
                 }
 
-                string token = Token?.Invoke();
+                string token = OrbitersLink.SafeToken();
                 if (!string.IsNullOrEmpty(token))
                 {
                     request.SetRequestHeader("Authorization", "Bearer " + token);

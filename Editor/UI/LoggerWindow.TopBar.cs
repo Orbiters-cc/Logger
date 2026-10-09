@@ -85,6 +85,14 @@ namespace Orbiters.Logger.Editor
             statusArea.Add(statusText);
             bar.Add(statusArea);
 
+            var help = new Button { tooltip = "Get help: a project report with your logs, Git history and scene, and an AI diagnosis" };
+            help.AddToClassList("lg-tool-button");
+            help.AddToClassList("lg-help-button");
+            help.Add(new LoggerIcon(LoggerGlyph.Lifebuoy));
+            help.Add(LoggerUi.Text("Get help", "lg-tool-button__label"));
+            LoggerUi.Press(help, ReportWindow.Open);
+            bar.Add(help);
+
             consoleToggle = new Button();
             consoleToggle.AddToClassList("lg-tool-button");
             consoleToggle.AddToClassList("lg-console-toggle");

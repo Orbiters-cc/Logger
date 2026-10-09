@@ -591,6 +591,7 @@ namespace Orbiters.Logger.Editor
                 LogCapture.RebuildFromUnityConsole();
                 ShowToast("Reading Unity's console again");
             });
+            menu.AddItem(new GUIContent("Get help (project report)…"), false, ReportWindow.Open);
             menu.AddSeparator(string.Empty);
             menu.AddItem(new GUIContent("Compact rows"), Compact, () => SetCompact(!Compact));
             menu.AddItem(new GUIContent("Monospace font"), IsMonospace, () => SetMonospace(!IsMonospace));

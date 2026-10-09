@@ -2856,3 +2856,8 @@
 .lg-undo-card--now .lg-undo-card__hint {
     color: #e6e6e6;
 }
+
+/* The top bar's "Get help": opens the project report. */
+.lg-help-button .lg-icon {
+    --icon-color: #3cf29a;
+}

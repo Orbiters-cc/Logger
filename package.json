@@ -1,10 +1,10 @@
 {
   "name": "orbiters.logger",
   "displayName": "Logger",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "license": "LicenseRef-Orbiters-Proprietary",
   "unity": "2022.3",
-  "description": "A log hub for the Unity editor that replaces the Console: regex search, logs grouped by text with how often they happen, filters by source, level and time, multi-select copy with or without stack traces, explanations for over 300 known messages kept up to date from Orbiters, an activity timeline, and what each package costs at every script reload, entry into Play Mode and avatar upload. Handles millions of logs.",
+  "description": "A log hub for the Unity editor that replaces the Console: regex search, logs grouped by text with how often they happen, filters by source, level and time, multi-select copy with or without stack traces, explanations for over 300 known messages kept up to date from Orbiters, an activity timeline, a one-click project report to get help (logs, Git history, scene and an AI diagnosis for Orbiters members), and what each package costs at every script reload, entry into Play Mode and avatar upload. Handles millions of logs.",
   "type": "tool",
   "dependencies": {},
   "gitDependencies": {},

@@ -57,6 +57,7 @@ namespace Orbiters.Logger.Editor
             contextButton = LoggerUi.Icon(LoggerGlyph.Target, "Select the object this log is about", SelectContext);
             detailsActions.Add(contextButton);
             detailsActions.Add(LoggerUi.Icon(LoggerGlyph.EyeOff, "Hide messages like this (Delete)", HideSelected));
+            detailsActions.Add(LoggerUi.Icon(LoggerGlyph.Lifebuoy, "Get help with this: a project report about this log", AskForHelp));
             header.Add(detailsActions);
             detailsPane.Add(header);
 
@@ -654,6 +655,21 @@ namespace Orbiters.Logger.Editor
                 line.Add(LoggerUi.Text(RichText.Literal(RichText.FirstLine(store.Texts.Plain(message.Text), 200)), "lg-selection-line__text"));
                 card.Add(line);
             }
+        }
+
+        // The report window, its note started with the log in view.
+        private void AskForHelp()
+        {
+            string note = null;
+            int messageId = cursor >= 0 ? MessageOfKey(cursor) : -1;
+            if (messageId >= 0)
+            {
+                var store = Store;
+                ref var message = ref store.Message(messageId);
+                note = "I get this " + LogVariants.Label(message.Variant).ToLowerInvariant() + ": " + DiagnosisClient.FirstLine(store.Texts.Plain(message.Text));
+            }
+
+            ReportWindow.Open(note);
         }
 
         private void SelectContext()

@@ -1,7 +1,6 @@
 #if LOGGER_UNITGIT
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -124,7 +123,7 @@ namespace Orbiters.Logger.Editor.UnitGit
             try
             {
                 root = Path.GetFullPath(".");
-                if (!Directory.Exists(Path.Combine(root, ".git")) && !File.Exists(Path.Combine(root, ".git")))
+                if (!GitCli.IsRepository(root))
                 {
                     TimelineMarkers.Clear(Source);
                     running = 0;
@@ -182,38 +181,22 @@ namespace Orbiters.Logger.Editor.UnitGit
 
         private static void AddCommits(string root, List<TimelineMarker> markers)
         {
-            var start = new ProcessStartInfo("git", "-C \"" + root + "\" log -n 500 --since=30.days --format=%h%x1f%at%x1f%s%x1f%an")
+            var result = GitCli.Run(root, "log -n 500 --since=30.days --format=%h%x1f%at%x1f%s%x1f%an", 10000);
+            if (!result.Success)
             {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                StandardOutputEncoding = Encoding.UTF8
-            };
-            using (var process = Process.Start(start))
+                return;
+            }
+
+            foreach (string line in result.Output.Split('\n'))
             {
-                if (process == null)
+                string[] parts = line.TrimEnd('\r').Split('\u001f');
+                if (parts.Length < 4 || !long.TryParse(parts[1], out long seconds))
                 {
-                    return;
+                    continue;
                 }
 
-                string output = process.StandardOutput.ReadToEnd();
-                if (!process.WaitForExit(10000) || process.ExitCode != 0)
-                {
-                    return;
-                }
-
-                foreach (string line in output.Split('\n'))
-                {
-                    string[] parts = line.TrimEnd('\r').Split('\u001f');
-                    if (parts.Length < 4 || !long.TryParse(parts[1], out long seconds))
-                    {
-                        continue;
-                    }
-
-                    var time = DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime;
-                    markers.Add(new TimelineMarker(time, TimelineMarkerKind.Commit, parts[2], parts[0] + " · " + parts[3]));
-                }
+                var time = DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime;
+                markers.Add(new TimelineMarker(time, TimelineMarkerKind.Commit, parts[2], parts[0] + " · " + parts[3]));
             }
         }
     }

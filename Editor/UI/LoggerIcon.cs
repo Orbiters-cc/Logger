@@ -42,7 +42,14 @@ namespace Orbiters.Logger.Editor
         Upload,
         Undo,
         Redo,
-        Cloud
+        Cloud,
+        Lifebuoy,
+        Sparkle,
+        Branch,
+        Hierarchy,
+        Package,
+        Folder,
+        Shield
     }
 
     /// <summary>
@@ -403,6 +410,62 @@ namespace Orbiters.Logger.Editor
                     p.BezierCurveTo(P(19f, 17.8f), P(18f, 18.5f), P(16.5f, 18.5f));
                     p.ClosePath();
                     p.Stroke();
+                    break;
+                case LoggerGlyph.Lifebuoy:
+                    Circle(12f, 12f, 9f);
+                    Circle(12f, 12f, 4f);
+                    Line(P(5.6f, 5.6f), P(9.2f, 9.2f));
+                    Line(P(18.4f, 5.6f), P(14.8f, 9.2f));
+                    Line(P(5.6f, 18.4f), P(9.2f, 14.8f));
+                    Line(P(18.4f, 18.4f), P(14.8f, 14.8f));
+                    break;
+                case LoggerGlyph.Sparkle:
+                    // A four-point star with a small one beside it: what the AI brings.
+                    p.BeginPath();
+                    p.MoveTo(P(10.5f, 3.5f));
+                    p.BezierCurveTo(P(11.2f, 8.6f), P(12.4f, 9.8f), P(17.5f, 10.5f));
+                    p.BezierCurveTo(P(12.4f, 11.2f), P(11.2f, 12.4f), P(10.5f, 17.5f));
+                    p.BezierCurveTo(P(9.8f, 12.4f), P(8.6f, 11.2f), P(3.5f, 10.5f));
+                    p.BezierCurveTo(P(8.6f, 9.8f), P(9.8f, 8.6f), P(10.5f, 3.5f));
+                    p.ClosePath();
+                    p.Stroke();
+                    Filled(P(18f, 14.5f), P(18.7f, 17.3f), P(21.5f, 18f), P(18.7f, 18.7f), P(18f, 21.5f), P(17.3f, 18.7f), P(14.5f, 18f), P(17.3f, 17.3f));
+                    break;
+                case LoggerGlyph.Branch:
+                    Circle(7f, 5f, 2.3f);
+                    Circle(7f, 19f, 2.3f);
+                    Circle(17f, 7f, 2.3f);
+                    Line(P(7f, 7.3f), P(7f, 16.7f));
+                    p.BeginPath();
+                    p.MoveTo(P(17f, 9.3f));
+                    p.BezierCurveTo(P(17f, 13.5f), P(8f, 12.5f), P(7.4f, 16.6f));
+                    p.Stroke();
+                    break;
+                case LoggerGlyph.Hierarchy:
+                    Rounded(3f, 3f, 8f, 5.5f, 1.6f);
+                    Rounded(12f, 9.5f, 9f, 5f, 1.6f);
+                    Rounded(12f, 16f, 9f, 5f, 1.6f);
+                    Line(P(7f, 8.5f), P(7f, 18.5f), P(12f, 18.5f));
+                    Line(P(7f, 12f), P(12f, 12f));
+                    break;
+                case LoggerGlyph.Package:
+                    Rounded(3.5f, 7f, 17f, 13.5f, 2f);
+                    Line(P(3.5f, 7f), P(6f, 3.5f), P(18f, 3.5f), P(20.5f, 7f));
+                    Line(P(12f, 3.5f), P(12f, 11f));
+                    Line(P(9f, 15.5f), P(15f, 15.5f));
+                    break;
+                case LoggerGlyph.Folder:
+                    Closed(P(3f, 6f), P(3f, 19f), P(21f, 19f), P(21f, 8.5f), P(12f, 8.5f), P(10f, 5f), P(4f, 5f));
+                    break;
+                case LoggerGlyph.Shield:
+                    p.BeginPath();
+                    p.MoveTo(P(12f, 2.8f));
+                    p.LineTo(P(19.5f, 5.6f));
+                    p.BezierCurveTo(P(19.5f, 13f), P(17f, 18.5f), P(12f, 21.2f));
+                    p.BezierCurveTo(P(7f, 18.5f), P(4.5f, 13f), P(4.5f, 5.6f));
+                    p.ClosePath();
+                    p.Stroke();
+                    Line(P(8.8f, 12f), P(11.2f, 14.4f), P(15.4f, 9.6f));
                     break;
                 case LoggerGlyph.Thread:
                     Line(P(4f, 7f), P(13f, 7f));
