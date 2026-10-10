@@ -31,7 +31,7 @@ namespace Orbiters.Logger.Editor
 
             var brand = LoggerUi.Box("lg-brand");
             var mark = LoggerUi.Box("lg-brand__mark");
-            mark.Add(new LoggerIcon(LoggerGlyph.Pulse));
+            mark.Add(new LoggerIcon(LoggerGlyph.Logo));
             brand.Add(mark);
             brand.Add(LoggerUi.Text(LoggerInfo.DisplayName, "lg-brand__name"));
             bar.Add(brand);

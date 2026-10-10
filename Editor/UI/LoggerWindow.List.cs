@@ -113,7 +113,7 @@ namespace Orbiters.Logger.Editor
 
             emptyState = LoggerUi.Box("lg-empty", PickingMode.Ignore);
             var emptyMark = LoggerUi.Box("lg-empty__mark", PickingMode.Ignore);
-            emptyMark.Add(new LoggerIcon(LoggerGlyph.Pulse));
+            emptyMark.Add(new LoggerIcon(LoggerGlyph.Logo));
             emptyState.Add(emptyMark);
             emptyTitle = LoggerUi.Text(string.Empty, "lg-empty__title");
             emptyBody = LoggerUi.Text(string.Empty, "lg-empty__body");

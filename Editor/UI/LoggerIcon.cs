@@ -5,7 +5,6 @@ namespace Orbiters.Logger.Editor
 {
     internal enum LoggerGlyph
     {
-        Pulse,
         Error,
         Warning,
         Info,
@@ -49,7 +48,8 @@ namespace Orbiters.Logger.Editor
         Hierarchy,
         Package,
         Folder,
-        Shield
+        Shield,
+        Logo
     }
 
     /// <summary>
@@ -208,8 +208,9 @@ namespace Orbiters.Logger.Editor
 
             switch (glyph)
             {
-                case LoggerGlyph.Pulse:
-                    Line(P(2.5f, 13f), P(7f, 13f), P(9.5f, 6f), P(13.5f, 19f), P(16f, 10f), P(17.5f, 13f), P(21.5f, 13f));
+                case LoggerGlyph.Logo:
+                    // Filled, not stroked: the logo's own shapes, one unit inside the 24 box like the line glyphs.
+                    LoggerLogo.Fill(p, new Rect(P(1f, 1f), new Vector2(22f, 22f) * s), color);
                     break;
                 case LoggerGlyph.Error:
                     // An octagon with an exclamation mark: distinct from the warning triangle and info circle.

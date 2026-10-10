@@ -11,12 +11,13 @@ namespace Orbiters.Logger.Editor
         None,
         Mcb,
         MyAvatar,
-        ReFit
+        ReFit,
+        Logger
     }
 
     /// <summary>
     /// Micro logos of the Orbiters tools for source chips, drawn from each tool's own geometry (MCB's polygons, ReFit's
-    /// bars, My Avatar's SVG) so they stay crisp at 9 px and need no texture or package reference.
+    /// bars, My Avatar's and the Logger's SVG) so they stay crisp at 9 px and need no texture or package reference.
     /// </summary>
     internal sealed class SourceLogo : VisualElement
     {
@@ -65,6 +66,8 @@ namespace Orbiters.Logger.Editor
                     return SourceLogoKind.MyAvatar;
                 case "refit":
                     return SourceLogoKind.ReFit;
+                case "logger":
+                    return SourceLogoKind.Logger;
                 default:
                     return SourceLogoKind.None;
             }
@@ -72,7 +75,8 @@ namespace Orbiters.Logger.Editor
 
         /// <summary>Width over height of each logo.</summary>
         public static float Aspect(SourceLogoKind kind) =>
-            kind == SourceLogoKind.Mcb ? 645f / 208f : kind == SourceLogoKind.MyAvatar ? 309f / 258f : kind == SourceLogoKind.ReFit ? 39f / 35f : 1f;
+            kind == SourceLogoKind.Mcb ? 645f / 208f : kind == SourceLogoKind.MyAvatar ? 309f / 258f : kind == SourceLogoKind.ReFit ? 39f / 35f :
+            kind == SourceLogoKind.Logger ? LoggerLogo.Size.x / LoggerLogo.Size.y : 1f;
 
         public void Set(SourceLogoKind value, Color tint, float height)
         {
@@ -92,6 +96,12 @@ namespace Orbiters.Logger.Editor
             var rect = contentRect;
             if (kind == SourceLogoKind.None || rect.width <= 0 || rect.height <= 0)
             {
+                return;
+            }
+
+            if (kind == SourceLogoKind.Logger)
+            {
+                LoggerLogo.Fill(context.painter2D, rect, color);
                 return;
             }
 

@@ -77,8 +77,7 @@ namespace Orbiters.Logger.Editor
         private void OnEnable()
         {
             openWindows++;
-            var icon = EditorGUIUtility.IconContent("UnityEditor.ConsoleWindow");
-            titleContent = new GUIContent(LoggerInfo.DisplayName, icon?.image, "Orbiters Logger");
+            titleContent = new GUIContent(LoggerInfo.DisplayName, LoggerLogo.TabIcon(), "Orbiters Logger");
             minSize = new Vector2(520f, 300f);
             AssemblyReloadEvents.beforeAssemblyReload += runner.Cancel;
         }
@@ -309,6 +308,13 @@ namespace Orbiters.Logger.Editor
         {
             try
             {
+                // A skin or display scale change makes a new tab icon.
+                var tabIcon = LoggerLogo.TabIcon();
+                if (titleContent.image != tabIcon)
+                {
+                    titleContent.image = tabIcon;
+                }
+
                 TickCore();
             }
             catch (Exception exception)

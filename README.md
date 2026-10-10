@@ -1,5 +1,11 @@
 # Logger
 
+## 0.2.5 — 2026-10-10
+
+- **New logo**: an "L" made of log lines, in the top bar, the empty list, the Logger's own source chips and the window
+  tab (in the grey of Unity's tab icons for the skin, sharp on high-DPI displays). Drawn from its vector shapes, so
+  there is no image file to import.
+
 ## 0.2.4 — 2026-10-09
 
 - **Get help** (top bar, a log's details, Tools › Orbiters › Get Help): makes a project report someone else can read
