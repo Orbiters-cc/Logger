@@ -27,13 +27,16 @@ namespace Orbiters.Logger.Editor
     }
 
     /// <summary>
-    /// Asks Orbiters for the AI diagnosis of a report (<c>POST logger/diagnosis</c>, signed-in members). It sends the
-    /// note, the project facts, the most important log messages, the Git state and the scene numbers, all masked; never
-    /// files. Started on the main thread, polled with <see cref="Poll"/>.
+    /// Asks Orbiters for the AI diagnosis of a report (<c>POST logger/diagnosis</c>, signed-in members); Orbiters passes
+    /// it to a third-party AI provider. It sends the note and the project facts, and from the parts the report includes
+    /// the most important log messages (Logs), the Git state (Git history) and the scene numbers (Scene description),
+    /// all masked; never files. Started on the main thread, polled with <see cref="Poll"/>.
     /// </summary>
     internal sealed class DiagnosisClient : IDisposable
     {
-        private const int TimeoutSeconds = 150;
+        // Longer than the server gives the AI (up to 180 s): giving up first would leave the server answering a request
+        // nobody reads, and an immediate "Ask again" would only hear that the previous one is still running.
+        private const int TimeoutSeconds = 200;
         private UnityWebRequest request;
 
         public bool Done { get; private set; }
@@ -124,7 +127,7 @@ namespace Orbiters.Logger.Editor
             public string error;
         }
 
-        private static string ErrorOf(long status, string body, string transport)
+        internal static string ErrorOf(long status, string body, string transport)
         {
             string message = null;
             try
@@ -136,7 +139,8 @@ namespace Orbiters.Logger.Editor
                 // Not JSON: an error page.
             }
 
-            if (status == 401 || status == 403 && string.IsNullOrEmpty(message))
+            // 401 is always the sign-in; a 403 with a reason (AI features turned off in the account) says it.
+            if (status == 401 || (status == 403 && string.IsNullOrEmpty(message)))
             {
                 return "Your Orbiters sign-in expired. Connect again to get the AI diagnosis.";
             }
@@ -227,10 +231,13 @@ namespace Orbiters.Logger.Editor
         }
 #pragma warning restore 0649, 0414
 
-        /// <summary>The request body, every text masked and cut to what the server accepts.</summary>
+        /// <summary>
+        /// The request body, every text masked and cut to what the server accepts. Only the parts the report includes go
+        /// in: logs with Logs, the Git state with Git history, the scene with Scene description.
+        /// </summary>
         internal static Request BuildRequest(ReportContext context)
         {
-            string M(string text, int max) => LogReport.Clip(context.Privacy.Mask(text ?? string.Empty), max);
+            string M(string text, int max) => context.Privacy.MaskAndClip(text ?? string.Empty, max);
             var request = new Request { note = M(context.Note, 2000) };
             var project = context.Project;
             if (project != null)
@@ -246,7 +253,7 @@ namespace Orbiters.Logger.Editor
                 };
             }
 
-            var logs = context.Logs;
+            var logs = context.Has(ReportPart.Logs) ? context.Logs : null;
             if (logs != null)
             {
                 request.logs = new LogsPart
@@ -269,11 +276,11 @@ namespace Orbiters.Logger.Editor
                 };
             }
 
-            var git = context.Git;
+            var git = context.Has(ReportPart.Git) ? context.Git : null;
             request.git = git != null && git.Repository && git.Error == null
                 ? new GitPart { branch = M(git.Branch, 160), changedFiles = git.Changed, recent = git.Recent.Take(15).Select(s => M(s, 200)).ToArray() }
                 : new GitPart { branch = git == null ? "(not included)" : git.Repository ? "(Git did not answer)" : "(no Git repository)", recent = Array.Empty<string>() };
-            var scene = context.Scene;
+            var scene = context.Has(ReportPart.Scene) ? context.Scene : null;
             request.scene = scene != null
                 ? new ScenePart
                 {
@@ -289,7 +296,10 @@ namespace Orbiters.Logger.Editor
 
         // ---- Markdown -------------------------------------------------------------------------------------------
 
-        /// <summary>The diagnosis as Markdown, the related log groups quoted under each cause.</summary>
+        /// <summary>
+        /// The diagnosis as Markdown, the related log groups quoted under each cause. The AI's words are escaped: a log
+        /// that talked the AI into writing a link or HTML still shows as plain text.
+        /// </summary>
         internal static string Markdown(Diagnosis diagnosis, IReadOnlyList<LogDigestGroup> groups, int level = 1)
         {
             var text = new StringBuilder();
@@ -298,27 +308,28 @@ namespace Orbiters.Logger.Editor
             text.Append(heading).Append("AI diagnosis\n\n");
             if (!string.IsNullOrWhiteSpace(diagnosis.headline))
             {
-                text.Append("**").Append(diagnosis.headline.Trim()).Append("**\n\n");
+                text.Append("**").Append(MarkdownText.Escape(OneLine(diagnosis.headline))).Append("**\n\n");
             }
 
             if (!string.IsNullOrWhiteSpace(diagnosis.summary))
             {
-                text.Append(diagnosis.summary.Trim()).Append("\n\n");
+                text.Append(MarkdownText.Escape(diagnosis.summary.Trim())).Append("\n\n");
             }
 
             int number = 1;
             foreach (var cause in diagnosis.causes ?? Array.Empty<DiagnosisCause>())
             {
-                text.Append(causeHeading).Append(number++).Append(". ").Append(cause.title).Append("  (").Append(cause.likelihood).Append(" likelihood)\n\n");
+                text.Append(causeHeading).Append(number++).Append(". ").Append(MarkdownText.Escape(OneLine(cause.title))).Append("  (")
+                    .Append(Likelihood(cause.likelihood)).Append(" likelihood)\n\n");
                 if (!string.IsNullOrWhiteSpace(cause.explanation))
                 {
-                    text.Append(cause.explanation.Trim()).Append("\n\n");
+                    text.Append(MarkdownText.Escape(cause.explanation.Trim())).Append("\n\n");
                 }
 
                 int step = 1;
                 foreach (string line in cause.steps ?? Array.Empty<string>())
                 {
-                    text.Append(step++).Append(". ").Append(line).Append('\n');
+                    text.Append(step++).Append(". ").Append(MarkdownText.Escape(OneLine(line))).Append('\n');
                 }
 
                 var related = (cause.related ?? Array.Empty<string>()).Select(id => groups?.FirstOrDefault(g => g.Id == id)).Where(g => g != null).ToList();
@@ -337,6 +348,15 @@ namespace Orbiters.Logger.Editor
             text.Append("_Written by Orbiters' AI from this report's logs and project facts. It can be wrong: check before you change your project._\n");
             return text.ToString();
         }
+
+        /// <summary>One of high, medium or low, whatever the answer held.</summary>
+        internal static string Likelihood(string value)
+        {
+            value = (value ?? string.Empty).Trim().ToLowerInvariant();
+            return value == "high" || value == "low" ? value : "medium";
+        }
+
+        private static string OneLine(string text) => (text ?? string.Empty).Trim().Replace('\r', ' ').Replace('\n', ' ');
 
         internal static string FirstLine(string text)
         {

@@ -152,6 +152,14 @@ namespace Orbiters.Logger.Editor
             return label;
         }
 
+        /// <summary>A label for text from elsewhere (an AI answer, a log): tags in it show as written, never as rich text.</summary>
+        internal static Label Plain(string text, string className)
+        {
+            var label = Text(text, className);
+            label.enableRichText = false;
+            return label;
+        }
+
         internal static VisualElement Box(string className, PickingMode picking = PickingMode.Position)
         {
             var element = new VisualElement { pickingMode = picking };

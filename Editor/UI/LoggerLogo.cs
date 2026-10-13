@@ -72,21 +72,24 @@ namespace Orbiters.Logger.Editor
         private static readonly Color LightSkinTab = new Color(0.27f, 0.27f, 0.27f);
         private const float TabPoints = 16f;
 
-        private static Texture2D tabIcon;
-        private static bool tabIconProSkin;
-        private static int tabIconPixels;
+        // One per size and skin: two windows on displays of different scale each keep theirs (a single cached texture
+        // was destroyed by the other window's request and left an empty tab).
+        private static readonly Dictionary<int, Texture2D> TabIcons = new Dictionary<int, Texture2D>();
 
-        // The texture is the domain's own: it goes before a script reload, which would otherwise leak it.
-        static LoggerLogo() => AssemblyReloadEvents.beforeAssemblyReload += ReleaseTabIcon;
+        // The textures are the domain's own: they go before a script reload, which would otherwise leak them.
+        static LoggerLogo() => AssemblyReloadEvents.beforeAssemblyReload += ReleaseTabIcons;
 
-        private static void ReleaseTabIcon()
+        private static void ReleaseTabIcons()
         {
-            if (tabIcon != null)
+            foreach (var icon in TabIcons.Values)
             {
-                UnityEngine.Object.DestroyImmediate(tabIcon);
+                if (icon != null)
+                {
+                    UnityEngine.Object.DestroyImmediate(icon);
+                }
             }
 
-            tabIcon = null;
+            TabIcons.Clear();
         }
 
         /// <summary>Fills the logo in <paramref name="color"/>, as large as fits <paramref name="box"/>, centred.</summary>
@@ -136,25 +139,24 @@ namespace Orbiters.Logger.Editor
         }
 
         /// <summary>
-        /// The window tab's icon: 16 points at the current pixel density, in the skin's tab icon grey. Cached; a new one
-        /// comes back after a skin or display scale change.
+        /// The window tab's icon: 16 points at the current pixel density, in the skin's tab icon grey. Cached per size and
+        /// skin; a skin or display scale change gets its own.
         /// </summary>
         public static Texture2D TabIcon()
         {
             bool proSkin = EditorGUIUtility.isProSkin;
             int pixels = Mathf.Max(16, Mathf.RoundToInt(TabPoints * EditorGUIUtility.pixelsPerPoint));
-            if (tabIcon != null && tabIconProSkin == proSkin && tabIconPixels == pixels)
+            int key = pixels * 2 + (proSkin ? 1 : 0);
+            if (TabIcons.TryGetValue(key, out var icon) && icon != null)
             {
-                return tabIcon;
+                return icon;
             }
 
-            ReleaseTabIcon();
             // One point of margin, like Unity's own 16 px icons.
-            tabIcon = Rasterize(pixels, pixels / TabPoints, proSkin ? DarkSkinTab : LightSkinTab);
-            tabIcon.name = "Logger tab icon";
-            tabIconProSkin = proSkin;
-            tabIconPixels = pixels;
-            return tabIcon;
+            icon = Rasterize(pixels, pixels / TabPoints, proSkin ? DarkSkinTab : LightSkinTab);
+            icon.name = "Logger tab icon";
+            TabIcons[key] = icon;
+            return icon;
         }
 
         /// <summary>

@@ -13,6 +13,7 @@
     --rp-scene-soft: rgba(120, 178, 255, 0.14);
     --rp-export: #f5c26b;
     --rp-export-soft: rgba(245, 194, 107, 0.14);
+    --rp-private-soft: rgba(127, 211, 199, 0.14);
     background-color: var(--lg-surface);
 }
 
@@ -533,6 +534,18 @@
     --icon-color: #f7cd80;
 }
 
+.rp-card--on.rp-card--anonymize {
+    background-color: #232b2a;
+}
+
+.rp-card--on.rp-card--anonymize .rp-card__tile {
+    background-color: var(--rp-private-soft);
+}
+
+.rp-card--on.rp-card--anonymize .rp-card__tile .lg-icon {
+    --icon-color: #8fe0d3;
+}
+
 .rp-card--on {
     background-color: #282828;
 }
@@ -586,6 +599,24 @@
 
 .rp-card--sceneexport .lg-switch--on {
     background-color: #e9ad45;
+}
+
+.rp-card--anonymize .lg-switch--on {
+    background-color: #4fb8a8;
+}
+
+/* The anonymize card has no numbers: its warning sits right under the text. */
+.rp-card--anonymize .rp-card__stats {
+    display: none;
+}
+
+.rp-card--anonymize {
+    min-height: 0;
+}
+
+.rp-card__links {
+    flex-direction: row;
+    flex-wrap: wrap;
 }
 
 /* The Toolkit's sign-in inside the AI card: flat, on the card's own surface. */

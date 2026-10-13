@@ -45,18 +45,28 @@ namespace Orbiters.Logger.Editor
         private VisualElement goSheen;
         private Toasts toasts;
 
+        private ReportCard anonymizeCard;
         private Task<GitDigest> gitTask;
         private GitDigest gitFacts;
-        private List<string> gitExtras = new List<string>();
+        private List<ReportExtra> gitExtras = new List<ReportExtra>();
+        // One Git read at a time; a focus while one runs asks for another after it.
+        private bool gitStale;
+        private double lastGitRead = -100d;
         private SceneDigest sceneFacts;
         private string scenePathsKey;
         private Task<SceneFiles> filesTask;
         private SceneFiles sceneFiles;
         private bool sceneDirty = true;
+        // The scene is read once the hierarchy has been quiet a moment, and its files again after a save only when the
+        // export is chosen: dragging objects or saving often must not walk the whole scene each time.
+        private double lastSceneChange;
+        private bool filesStale;
+        private double lastFilesRead = -100d;
         private bool signInShown;
         private bool toolkitLinkShown;
         private int logCount;
         private long editorLogBytes;
+        private const double QuietSeconds = 1.5d;
 
         [MenuItem("Tools/Orbiters/Get Help (Project Report)", priority = 2001)]
         public static void Open() => Open(null);
@@ -104,23 +114,28 @@ namespace Orbiters.Logger.Editor
 
         private void OnFocus()
         {
-            // Back from elsewhere (a commit made, a scene saved): read Git and the scene again.
+            // Back from elsewhere (a commit made, a scene saved): read Git and the scene again, Git at most every few
+            // seconds (opening the window focuses it right after its first read).
             if (choosePage != null && running == null)
             {
-                gitTask = null;
                 sceneDirty = true;
-                RefreshFacts(git: true);
+                RefreshFacts(git: EditorApplication.timeSinceStartup - lastGitRead > 5d);
             }
         }
 
         private void OnAccountChanged() => rootVisualElement.schedule.Execute(() => RefreshFacts(git: false));
 
-        private void OnHierarchyChanged() => sceneDirty = true;
+        private void OnHierarchyChanged()
+        {
+            sceneDirty = true;
+            lastSceneChange = EditorApplication.timeSinceStartup;
+        }
 
         private void OnSceneSaved(UnityEngine.SceneManagement.Scene scene)
         {
             sceneDirty = true;
-            scenePathsKey = null;
+            filesStale = true;
+            lastSceneChange = EditorApplication.timeSinceStartup;
         }
 
         public void CreateGUI()
@@ -168,6 +183,13 @@ namespace Orbiters.Logger.Editor
                 ShowPage(choosePage, animate: false);
                 PlayCardsEntrance();
                 RefreshFacts(git: true);
+            }
+
+            if (ReportBuilder.TakeReloadNotice(out string saved))
+            {
+                ShowToast(saved != null
+                    ? "Scripts reloaded as the report finished: it was saved as " + Path.GetFileName(saved) + "."
+                    : "Scripts reloaded and stopped the report: nothing was saved. Create it again.", saved == null);
             }
         }
 
@@ -239,30 +261,64 @@ namespace Orbiters.Logger.Editor
 
             var section = LoggerUi.Box("rp-section-title");
             section.Add(LoggerUi.Text("WHAT GOES IN THE REPORT", "rp-section-title__text"));
-            var all = new Button { text = "Everything" };
+            var all = new Button { text = "Everything", tooltip = "Turn every part of the report file on. The AI diagnosis stays as you set it." };
             all.AddToClassList("rp-section-title__action");
             LoggerUi.Press(all, SelectEverything);
             section.Add(all);
             page.Add(section);
 
+            // Each card says what it puts in the file, private parts included: the person decides before anything is made.
             var grid = LoggerUi.Box("rp-cards");
-            AddCard(grid, ReportPart.Diagnosis, LoggerGlyph.Sparkle, "AI diagnosis", "ORBITERS AI",
-                "Orbiters' AI reads your errors, warnings and project setup, then tells you what is most likely wrong and how to fix it.");
+            var ai = AddCard(grid, ReportPart.Diagnosis, LoggerGlyph.Sparkle, "AI diagnosis", "ORBITERS AI",
+                "Orbiters' AI tells you what is most likely wrong and how to fix it. Orbiters sends a third-party AI provider your note, the project name, " +
+                "Unity version, platform, system and package list, and from the parts you include: up to 40 log messages with the top of their stack " +
+                "traces, the Git branch, the number of changed files and the last 15 commit subjects, and the scene names, object counts and top-level " +
+                "object names. Never files. Off until you turn it on.");
+            ai.AddToClassList("rp-card--wide");
+            ai.AddLink("Which AI provider", "The AI providers Orbiters uses for each feature, and what they receive", () => Application.OpenURL(OrbitersLink.SiteUrl("legal/ai")));
             AddCard(grid, ReportPart.Logs, LoggerGlyph.List, "Logs", null,
-                "Every log of this session with its stack trace, every distinct message with how often it happened, and Unity's own Editor.log.");
+                "Every log of this session with its stack trace, every distinct message with how often it happened, and the end of Unity's Editor.log " +
+                "and Editor-prev.log (the previous session, which may be another project). Unity's logs hold your Windows user name, computer name, " +
+                "Unity machine id, license serial and project paths.");
             AddCard(grid, ReportPart.Git, LoggerGlyph.Branch, "Git history", null,
-                "The last commits with the files they changed, what is changed now, where the project went, and Unit Git's releases when it is used.");
+                "The last 300 commits with the files they changed and each author's name and email, what is changed now, the reflog, stashes and " +
+                "remote addresses; with Unit Git, its release records (avatar and blueprint ids) and release pictures.");
             AddCard(grid, ReportPart.Scene, LoggerGlyph.Hierarchy, "Scene description", null,
-                "Every object of the open scenes with its components, missing scripts flagged, and the project files the scenes use as a folder tree.");
-            var export = AddCard(grid, ReportPart.SceneExport, LoggerGlyph.Package, "Scene export", "UNITY PACKAGE",
-                "The open scenes with every file they depend on, as a .unitypackage someone can import to see exactly what you see.");
-            export.AddToClassList("rp-card--wide");
+                "Every object of the open scenes with its components, missing scripts flagged, and the project files the scenes use as a folder tree " +
+                "with sizes.");
+            AddCard(grid, ReportPart.SceneExport, LoggerGlyph.Package, "Scene export", "UNITY PACKAGE",
+                "The open scenes with every file they depend on, as a .unitypackage someone can import to see exactly what you see. It holds those " +
+                "files as they are, purchased avatars, shaders and tools included: send it only to people you trust.");
             page.Add(grid);
+
+            var privacyTitle = LoggerUi.Box("rp-section-title");
+            privacyTitle.Add(LoggerUi.Text("PRIVACY", "rp-section-title__text"));
+            page.Add(privacyTitle);
+            var privacyGrid = LoggerUi.Box("rp-cards");
+            anonymizeCard = new ReportCard("anonymize", LoggerGlyph.EyeOff, "Anonymize", null,
+                "Masks your Windows user name, computer name, machine and session ids, license serials, emails, Git authors, remote addresses, " +
+                "avatar and blueprint ids, and paths outside the project, in every text of the report and in the AI request. Release pictures and " +
+                "the scene export can't be anonymized: they are left out.", on =>
+                {
+                    ReportOptions.Anonymize = on;
+                    anonymizeCard.SetOn(on);
+                    ShowLogs();
+                    ShowGit();
+                    ShowExport();
+                    UpdateEstimate();
+                });
+            anonymizeCard.AddToClassList("rp-card--wide");
+            anonymizeCard.SetOn(ReportOptions.Anonymize);
+            anonymizeCard.SetStats(new List<ReportStat>());
+            anonymizeCard.SetNote("Anonymizing hides clues too: whoever reads the report may find the problem harder to see.");
+            privacyGrid.Add(anonymizeCard);
+            page.Add(privacyGrid);
 
             var privacy = LoggerUi.Box("rp-privacy", PickingMode.Ignore);
             privacy.Add(new LoggerIcon(LoggerGlyph.Shield));
-            privacy.Add(LoggerUi.Text("Your user folder becomes " + ReportPrivacy.UserFolder + ", and Orbiters tokens and passwords in addresses are masked in every text " +
-                                      "of the report. Unity version, platform and package list are always included.", "rp-privacy__text"));
+            privacy.Add(LoggerUi.Text("Always masked, anonymized or not: tokens, API and license keys, passwords, sign-in headers, cookies and Discord " +
+                                      "webhooks, and your user folder becomes " + ReportPrivacy.UserFolder + ". The project name, Unity version, platform, " +
+                                      "system and package list are always included.", "rp-privacy__text"));
             page.Add(privacy);
             return page;
         }
@@ -273,6 +329,7 @@ namespace Orbiters.Logger.Editor
             {
                 ReportOptions.Set(part, on);
                 cards[part].SetOn(on);
+                ShowDiagnosis();
                 UpdateEstimate();
             });
             card.SetOn(ReportOptions.IsOn(part));
@@ -290,14 +347,16 @@ namespace Orbiters.Logger.Editor
             }
         }
 
+        // Every part of the file; never the AI diagnosis, which sends the report away: that one is a choice of its own.
         private void SelectEverything()
         {
-            foreach (var pair in cards)
+            foreach (var pair in cards.Where(pair => pair.Key != ReportPart.Diagnosis))
             {
                 ReportOptions.Set(pair.Key, true);
                 pair.Value.SetOn(true);
             }
 
+            ShowDiagnosis();
             UpdateEstimate();
         }
 
@@ -332,6 +391,11 @@ namespace Orbiters.Logger.Editor
                 gitFacts = gitTask.Status == TaskStatus.RanToCompletion ? gitTask.Result : new GitDigest { Repository = true, Error = "Git did not answer." };
                 gitTask = null;
                 ShowGit();
+                if (gitStale)
+                {
+                    gitStale = false;
+                    StartGit();
+                }
             }
 
             if (filesTask != null && filesTask.IsCompleted)
@@ -358,11 +422,12 @@ namespace Orbiters.Logger.Editor
                 return;
             }
 
-            lastFacts = EditorApplication.timeSinceStartup;
+            double now = EditorApplication.timeSinceStartup;
+            lastFacts = now;
             UpdateAccount();
             ShowLogs();
             ShowDiagnosis();
-            if (sceneDirty)
+            if (sceneDirty && now - lastSceneChange > QuietSeconds)
             {
                 sceneDirty = false;
                 sceneFacts = SceneReport.Look();
@@ -372,39 +437,56 @@ namespace Orbiters.Logger.Editor
                 {
                     scenePathsKey = key;
                     sceneFiles = null;
-                    var files = SceneReport.Dependencies(sceneFacts);
-                    filesTask = Task.Run(() =>
-                    {
-                        SceneReport.Measure(files);
-                        return files;
-                    });
+                    ReadSceneFiles(now);
                 }
 
                 ShowExport();
             }
 
-            if (git && gitTask == null)
+            // After a save the files are read again only while the export counts, once the scene is quiet and at most
+            // every ten seconds: the dependency walk is not for every Ctrl+S.
+            if (filesStale && sceneFacts != null && filesTask == null && IsChosen(ReportPart.SceneExport) && now - lastFilesRead > 10d &&
+                now - lastSceneChange > QuietSeconds)
             {
-                string root = GitCli.ProjectRoot;
-                gitExtras = ReportOptions.GitExtras.SelectMany(extra =>
-                {
-                    try
-                    {
-                        return extra(root) ?? Enumerable.Empty<ReportExtra>();
-                    }
-                    catch (Exception)
-                    {
-                        return Enumerable.Empty<ReportExtra>();
-                    }
-                }).Where(e => File.Exists(e.Path) || Directory.Exists(e.Path)).Select(e => e.Label).ToList();
-                gitTask = Task.Run(() => GitReport.Look(root));
-                if (gitFacts == null)
-                {
-                    cards[ReportPart.Git].Loading();
-                }
+                ReadSceneFiles(now);
+            }
+
+            if (git)
+            {
+                StartGit();
             }
 
             UpdateEstimate();
+        }
+
+        private void ReadSceneFiles(double now)
+        {
+            filesStale = false;
+            lastFilesRead = now;
+            var files = SceneReport.Dependencies(sceneFacts);
+            filesTask = Task.Run(() =>
+            {
+                SceneReport.Measure(files);
+                return files;
+            });
+        }
+
+        private void StartGit()
+        {
+            if (gitTask != null)
+            {
+                gitStale = true;
+                return;
+            }
+
+            string root = GitCli.ProjectRoot;
+            gitExtras = ReportOptions.CollectGitExtras(root).Where(e => File.Exists(e.Path) || Directory.Exists(e.Path)).ToList();
+            lastGitRead = EditorApplication.timeSinceStartup;
+            gitTask = Task.Run(() => GitReport.Look(root));
+            if (gitFacts == null)
+            {
+                cards[ReportPart.Git].Loading();
+            }
         }
 
         private void ShowLogs()
@@ -423,6 +505,11 @@ namespace Orbiters.Logger.Editor
                 stats.Add(ReportStat.Plain("+ Editor.log, " + SceneReport.Size(Math.Min(editorLogBytes, 32L * 1024 * 1024)), null, "muted"));
             }
 
+            if (ReportOptions.Anonymize)
+            {
+                stats.Add(ReportStat.Plain("Anonymized", LoggerGlyph.EyeOff, "muted"));
+            }
+
             cards[ReportPart.Logs].SetStats(stats);
         }
 
@@ -437,21 +524,21 @@ namespace Orbiters.Logger.Editor
             {
                 if (signInShown)
                 {
-                    // Just connected: the card switches itself on.
+                    // Just connected: the card stays as the person set it (sending the report away is their choice).
                     signInShown = false;
                     card.Extra.Clear();
                     LoggerUi.Show(card.Extra, false);
-                    ReportOptions.Set(ReportPart.Diagnosis, true);
-                    card.SetOn(true);
-                    ShowToast("Connected" + (user.Length > 0 ? " as " + user : string.Empty) + ": the AI diagnosis is on");
+                    ShowToast("Connected" + (user.Length > 0 ? " as " + user : string.Empty) + (card.On ? string.Empty : ": turn the AI diagnosis on to use it"));
                 }
 
                 card.SetNote(null);
+                string reads = !IsChosen(ReportPart.Logs) ? "Logs are off: it only reads your note and project facts"
+                    : errors + warnings == 0 ? "Nothing wrong logged yet"
+                    : "Reads " + LoggerUi.Plural(Math.Min(errors, 999999), "error") + " and " + LoggerUi.Plural(warnings, "warning");
                 card.SetStats(new List<ReportStat>
                 {
                     ReportStat.Plain(user.Length > 0 ? "Connected as " + user : "Connected", LoggerGlyph.Check),
-                    ReportStat.Plain(errors + warnings == 0 ? "Nothing wrong logged yet" : "Reads " + LoggerUi.Plural(Math.Min(errors, 999999), "error") + " and " +
-                                     LoggerUi.Plural(warnings, "warning"), null, "muted")
+                    ReportStat.Plain(reads, null, "muted")
                 });
             }
             else if (OrbitersLink.CanSignIn)
@@ -517,9 +604,15 @@ namespace Orbiters.Logger.Editor
                     ? ReportStat.Counted(facts.Changed, n => LoggerUi.Plural(n, "uncommitted file"), LoggerGlyph.Warning, "warning")
                     : ReportStat.Plain("Nothing uncommitted", LoggerGlyph.Check)
             };
-            foreach (string extra in gitExtras)
+            bool anonymize = ReportOptions.Anonymize;
+            foreach (var extra in gitExtras)
             {
-                stats.Add(ReportStat.Plain("+ " + extra, null, "muted"));
+                stats.Add(ReportStat.Plain(anonymize && extra.Binary ? extra.Label + " left out (Anonymize)" : "+ " + extra.Label, null, "muted"));
+            }
+
+            if (anonymize)
+            {
+                stats.Add(ReportStat.Plain("Anonymized", LoggerGlyph.EyeOff, "muted"));
             }
 
             card.SetStats(stats);
@@ -549,6 +642,14 @@ namespace Orbiters.Logger.Editor
             var facts = sceneFacts;
             if (facts == null)
             {
+                return;
+            }
+
+            if (ReportOptions.Anonymize)
+            {
+                card.SetAvailable(false);
+                card.SetStats(new List<ReportStat> { ReportStat.Plain("Left out while anonymizing", LoggerGlyph.EyeOff, "muted") });
+                card.SetNote("A Unity package holds your files as they are: nothing in it can be anonymized. Turn Anonymize off to include it.");
                 return;
             }
 
@@ -728,11 +829,16 @@ namespace Orbiters.Logger.Editor
             goLabel.text = text;
             goIcon.Glyph = glyph;
             go.EnableInClassList("rp-go--quiet", quiet);
+            goChangedAt = EditorApplication.timeSinceStartup;
         }
+
+        // When the button last changed what it does: the second press of a double-click must not cancel the report the
+        // first one started (nor start one from "New report").
+        private double goChangedAt = -100d;
 
         private void OnKeyDown(KeyDownEvent evt)
         {
-            if ((evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter) && evt.actionKey && running == null)
+            if ((evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter) && evt.actionKey && running == null && shownPage == choosePage)
             {
                 OnGo();
                 evt.StopPropagation();

@@ -29,6 +29,11 @@ namespace Orbiters.Logger.Editor
 
         private void OnGo()
         {
+            if (EditorApplication.timeSinceStartup - goChangedAt < 0.6d)
+            {
+                return;
+            }
+
             if (running == null)
             {
                 Create();
@@ -60,7 +65,7 @@ namespace Orbiters.Logger.Editor
             ReportBuilder builder;
             try
             {
-                builder = ReportBuilder.Start(parts, noteField?.value, folder);
+                builder = ReportBuilder.Start(parts, noteField?.value, folder, ReportOptions.Anonymize);
             }
             catch (Exception exception)
             {
@@ -83,7 +88,7 @@ namespace Orbiters.Logger.Editor
             BuildWorkPage(builder, animate);
             ShowPage(workPage, animate);
             orbit.Speed = 4.5f;
-            subtitle.text = "Making your report. You can keep working in Unity: it continues even if you close this window.";
+            subtitle.text = "Making your report. Keep working in Unity, or close this window: it carries on. A script reload stops it.";
             SetGo("Cancel", LoggerGlyph.Close, quiet: true);
             destination.SetEnabled(false);
             UpdateDestination();
@@ -170,11 +175,13 @@ namespace Orbiters.Logger.Editor
             }
 
             workPage.Add(list);
-            // The percent counts smoothly to the builder's progress; a light runs along the bar.
-            workPage.schedule.Execute(() =>
+            // The percent counts smoothly to the builder's progress; a light runs along the bar. Both stop with the report.
+            IVisualElementScheduledItem animation = null;
+            animation = workPage.schedule.Execute(() =>
             {
                 if (running == null)
                 {
+                    animation?.Pause();
                     return;
                 }
 
@@ -186,6 +193,10 @@ namespace Orbiters.Logger.Editor
                 float cycle = (float)(EditorApplication.timeSinceStartup % 1.4d / 1.4d);
                 barGlow.style.left = -70f + (width + 140f) * cycle;
                 barGlow.style.opacity = running.Finished ? 0f : 0.8f;
+                if (running.Finished && shownPercent >= target)
+                {
+                    animation?.Pause();
+                }
             }).Every(16);
         }
 
@@ -276,6 +287,8 @@ namespace Orbiters.Logger.Editor
             hero.Add(doneParts);
             FillParts(builder);
             var actions = LoggerUi.Box("rp-done__actions");
+            // With the scene export the zip holds the project's files as they are (purchased ones too): never a public channel.
+            bool exported = builder.Steps.Any(s => s.Title == "Scene export" && s.State == ReportStepState.Done);
             if (made)
             {
                 string path = builder.Result;
@@ -283,7 +296,7 @@ namespace Orbiters.Logger.Editor
                 actions.Add(LoggerUi.Pill("Copy a message to send", () =>
                 {
                     EditorGUIUtility.systemCopyBuffer = Message(builder);
-                    ShowToast("Copied: paste it with the file in a help channel or a DM");
+                    ShowToast(exported ? "Copied: send it with the file to someone you trust" : "Copied: paste it with the file in a help channel or a DM");
                 }, null, LoggerGlyph.Copy));
                 actions.Add(LoggerUi.Pill("Copy the path", () =>
                 {
@@ -299,7 +312,10 @@ namespace Orbiters.Logger.Editor
             hero.Add(actions);
             if (made)
             {
-                hero.Add(LoggerUi.Text("Send the file to whoever helps you, or drop it in a help channel with the message. Unzip it to read README.md first.", "rp-done__hint"));
+                hero.Add(LoggerUi.Text(exported
+                    ? "Send the file only to someone you trust, not in a public channel: the scene export holds your scene's files as they are, purchased ones " +
+                      "included. Unzip it to read README.md first."
+                    : "Send the file to whoever helps you, or drop it in a help channel with the message. Unzip it to read README.md first.", "rp-done__hint"));
             }
 
             var burst = new Burst();
@@ -360,7 +376,10 @@ namespace Orbiters.Logger.Editor
             return chip;
         }
 
-        /// <summary>A short message to paste beside the file: the project, the numbers, the note and the AI's headline.</summary>
+        /// <summary>
+        /// A short message to paste beside the file: the project, the numbers, the note and the AI's headline, escaped for a
+        /// chat (no link, formatting or mention can come from a log or the AI).
+        /// </summary>
         private static string Message(ReportBuilder builder)
         {
             var context = builder.Context;
@@ -379,15 +398,15 @@ namespace Orbiters.Logger.Editor
             text.Append(".\n");
             if (!string.IsNullOrWhiteSpace(context.Note))
             {
-                text.Append("What's going wrong: ").Append(context.Note.Trim()).Append('\n');
+                text.Append("What's going wrong: ").Append(MarkdownText.ForChat(context.Note.Trim())).Append('\n');
             }
 
             if (context.Diagnosis != null && !string.IsNullOrWhiteSpace(context.Diagnosis.headline))
             {
-                text.Append("The Orbiters AI thinks: ").Append(context.Diagnosis.headline.Trim()).Append('\n');
+                text.Append("The Orbiters AI thinks: ").Append(MarkdownText.ForChat(context.Diagnosis.headline.Trim())).Append('\n');
             }
 
-            text.Append("The file: ").Append(Path.GetFileName(builder.Result)).Append(" (open README.md first)");
+            text.Append("The file: ").Append(MarkdownText.ForChat(Path.GetFileName(builder.Result))).Append(" (open README.md first)");
             return text.ToString();
         }
 
@@ -427,7 +446,7 @@ namespace Orbiters.Logger.Editor
             if (diagnosis == null || builder.DiagnosisError != null)
             {
                 card.AddToClassList("rp-diagnosis--failed");
-                card.Add(LoggerUi.Text(builder.DiagnosisError ?? "No diagnosis.", "rp-diagnosis__summary"));
+                card.Add(LoggerUi.Plain(builder.DiagnosisError ?? "No diagnosis.", "rp-diagnosis__summary"));
                 if (!OrbitersLink.SignedIn && OrbitersLink.CanSignIn)
                 {
                     var signIn = OrbitersLink.SignInElement("Connect, then ask again: the AI reads what this report found.", () => builder.AskAgain());
@@ -455,15 +474,16 @@ namespace Orbiters.Logger.Editor
                 ShowToast("Diagnosis copied");
             });
             head.Add(copy);
+            // The AI's words as plain text: a log can talk it into writing rich text tags.
             int order = 0;
             if (!string.IsNullOrWhiteSpace(diagnosis.headline))
             {
-                card.Add(Reveal(LoggerUi.Text(diagnosis.headline.Trim(), "rp-diagnosis__headline"), order++));
+                card.Add(Reveal(LoggerUi.Plain(diagnosis.headline.Trim(), "rp-diagnosis__headline"), order++));
             }
 
             if (!string.IsNullOrWhiteSpace(diagnosis.summary))
             {
-                card.Add(Reveal(LoggerUi.Text(diagnosis.summary.Trim(), "rp-diagnosis__summary"), order++));
+                card.Add(Reveal(LoggerUi.Plain(diagnosis.summary.Trim(), "rp-diagnosis__summary"), order++));
             }
 
             var causes = diagnosis.causes ?? Array.Empty<DiagnosisCause>();
@@ -489,6 +509,8 @@ namespace Orbiters.Logger.Editor
 
             diagnosisFoot.text = "Written by Orbiters' AI from this report. It can be wrong: check before you change your project. " +
                                  (builder.DiagnosisInFile ? "Also in the report as diagnosis.md."
+                                     : builder.AddingDiagnosis ? "Adding it to the report file…"
+                                     : builder.DiagnosisFileError != null ? builder.DiagnosisFileError + " Copy it with the button above."
                                      : builder.Result != null ? "Not in the report file: copy it with the button above." : string.Empty);
         }
 
@@ -505,10 +527,10 @@ namespace Orbiters.Logger.Editor
             var header = new Button();
             header.AddToClassList("rp-cause__header");
             header.Add(LoggerUi.Text(number.ToString(), "rp-cause__number"));
-            var title = LoggerUi.Text(cause.title, "rp-cause__title");
+            var title = LoggerUi.Plain(cause.title, "rp-cause__title");
             title.pickingMode = PickingMode.Ignore;
             header.Add(title);
-            string likelihood = string.IsNullOrEmpty(cause.likelihood) ? "medium" : cause.likelihood;
+            string likelihood = DiagnosisClient.Likelihood(cause.likelihood);
             var chip = LoggerUi.Text(likelihood == "high" ? "Most likely" : likelihood == "low" ? "Less likely" : "Likely", "rp-likelihood");
             chip.AddToClassList("rp-likelihood--" + likelihood);
             chip.pickingMode = PickingMode.Ignore;
@@ -521,7 +543,7 @@ namespace Orbiters.Logger.Editor
             var body = LoggerUi.Box("rp-cause__body");
             if (!string.IsNullOrWhiteSpace(cause.explanation))
             {
-                body.Add(LoggerUi.Text(cause.explanation.Trim(), "rp-cause__explanation"));
+                body.Add(LoggerUi.Plain(cause.explanation.Trim(), "rp-cause__explanation"));
             }
 
             var steps = cause.steps ?? Array.Empty<string>();
@@ -529,7 +551,7 @@ namespace Orbiters.Logger.Editor
             {
                 var step = LoggerUi.Box("lg-explain__step");
                 step.Add(LoggerUi.Text((i + 1).ToString(), "lg-explain__step-number"));
-                step.Add(LoggerUi.Text(steps[i], "lg-explain__step-text"));
+                step.Add(LoggerUi.Plain(steps[i], "lg-explain__step-text"));
                 body.Add(step);
             }
 
@@ -539,13 +561,13 @@ namespace Orbiters.Logger.Editor
                 var logs = LoggerUi.Box("rp-cause__logs");
                 foreach (var group in related)
                 {
-                    var log = LoggerUi.Text(DiagnosisClient.FirstLine(group.Text), "rp-cause__log");
+                    var log = LoggerUi.Plain(DiagnosisClient.FirstLine(group.Text), "rp-cause__log");
                     if (group.Level != LogLevel.Error)
                     {
                         log.AddToClassList("rp-cause__log--warning");
                     }
 
-                    log.tooltip = group.Text + "\n\n×" + group.Count + " · " + group.Source;
+                    log.tooltip = RichText.Strip(group.Text) + "\n\n×" + group.Count + " · " + RichText.Strip(group.Source);
                     logs.Add(log);
                 }
 

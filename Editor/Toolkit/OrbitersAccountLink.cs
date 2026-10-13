@@ -1,4 +1,6 @@
 #if LOGGER_TOOLKIT
+using System;
+using System.IO;
 using UnityEditor;
 
 namespace Orbiters.Logger.Editor.Toolkit
@@ -11,18 +13,61 @@ namespace Orbiters.Logger.Editor.Toolkit
     [InitializeOnLoad]
     internal static class OrbitersAccountLink
     {
+        private static readonly object Gate = new object();
+        private static AuthenticationService.AuthData cached;
+        private static string cachedKey;
+
         static OrbitersAccountLink()
         {
             OrbitersLink.ApiUrl = path => OrbitersEnvironment.ApiUrl(path);
-            OrbitersLink.Token = () => AuthenticationService.GetAuth()?.token;
+            OrbitersLink.SiteUrl = path => OrbitersEnvironment.WebsiteUrl + path.TrimStart('/');
+            OrbitersLink.Token = () => Auth()?.token;
             OrbitersLink.Username = () =>
             {
-                var auth = AuthenticationService.GetAuth();
+                var auth = Auth();
                 return auth == null ? null : string.IsNullOrEmpty(auth.username) ? auth.user : auth.username;
             };
             OrbitersLink.SignInElement = (reason, connected) => new OrbitersSignInElement(connected, reason, "logger");
+            AuthenticationService.Changed += Forget;
             AuthenticationService.Changed += OrbitersLink.RaiseChanged;
+            OrbitersEnvironment.Changed += Forget;
             OrbitersEnvironment.Changed += OrbitersLink.RaiseChanged;
+        }
+
+        // The account file is decrypted once per change, not at every look (the report window asks several times a second).
+        // Its write time tells when another project signed in or out.
+        private static AuthenticationService.AuthData Auth()
+        {
+            string path = AuthenticationService.GetAuthFilePath();
+            string key;
+            try
+            {
+                key = path + "|" + (File.Exists(path) ? File.GetLastWriteTimeUtc(path).Ticks : 0L);
+            }
+            catch (Exception)
+            {
+                key = path;
+            }
+
+            lock (Gate)
+            {
+                if (key != cachedKey)
+                {
+                    cached = AuthenticationService.GetAuth();
+                    cachedKey = key;
+                }
+
+                return cached;
+            }
+        }
+
+        private static void Forget()
+        {
+            lock (Gate)
+            {
+                cachedKey = null;
+                cached = null;
+            }
         }
     }
 }

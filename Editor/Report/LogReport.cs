@@ -21,6 +21,8 @@ namespace Orbiters.Logger.Editor
         public long FirstSeen;
         public long LastSeen;
         public string Known;
+        internal int TextId;
+        internal int StackId;
     }
 
     /// <summary>The session's logs in numbers, with the messages that matter most.</summary>
@@ -83,9 +85,9 @@ namespace Orbiters.Logger.Editor
 
         /// <summary>
         /// The numbers and the most important messages, on the main thread: compile errors first, then the errors that
-        /// happen most, then warnings, then the latest plain logs. Same text counts once.
+        /// happen most, then warnings, then the latest plain logs. Same text counts once. Texts are masked, then cut.
         /// </summary>
-        internal static LogDigest Digest(LogStore store)
+        internal static LogDigest Digest(LogStore store, ReportPrivacy privacy)
         {
             var digest = new LogDigest();
             if (store == null || store.Count == 0)
@@ -135,8 +137,8 @@ namespace Orbiters.Logger.Editor
                     Variant = message.Variant,
                     Count = counts[i],
                     Source = store.SourceOf(i).Name,
-                    Text = Clip(store.Texts.Plain(message.Text), MaxText),
-                    Stack = TopOfStack(store.Texts.Plain(message.Stack)),
+                    TextId = message.Text,
+                    StackId = message.Stack,
                     FirstSeen = first[i],
                     LastSeen = last[i]
                 };
@@ -153,8 +155,14 @@ namespace Orbiters.Logger.Editor
             {
                 var group = chosen[i];
                 group.Id = "g" + i;
-                int explanation = LogExplanations.Match(group.Text, group.Stack, group.Level);
-                group.Known = explanation >= 0 ? LogExplanations.Explain(explanation, group.Text)?.Title : null;
+                // Only the chosen ones are read and masked; masked before cutting, so a secret cut in half can't leak.
+                string text = store.Texts.Plain(group.TextId);
+                string stack = TopOfStack(store.Texts.Plain(group.StackId));
+                int explanation = LogExplanations.Match(text, stack, group.Level);
+                group.Known = explanation >= 0 ? LogExplanations.Explain(explanation, text)?.Title : null;
+                group.Text = privacy.MaskAndClip(text, MaxText);
+                group.Stack = privacy.MaskAndClip(stack, MaxStack);
+                group.Source = privacy.Mask(group.Source);
                 digest.Groups.Add(group);
             }
 
@@ -358,7 +366,7 @@ namespace Orbiters.Logger.Editor
             }
         }
 
-        // The frames that tell where it happened: the first lines, without Unity's own logging frames.
+        // The frames that tell where it happened: the first lines, without Unity's own logging frames (not cut: masked first).
         internal static string TopOfStack(string stack)
         {
             if (string.IsNullOrWhiteSpace(stack))
@@ -384,7 +392,7 @@ namespace Orbiters.Logger.Editor
                 }
             }
 
-            return Clip(kept.ToString().TrimEnd(), MaxStack);
+            return kept.ToString().TrimEnd();
         }
 
         internal static string Clip(string text, int max)

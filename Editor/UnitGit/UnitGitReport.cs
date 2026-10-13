@@ -31,7 +31,7 @@ namespace Orbiters.Logger.Editor.UnitGit
             string assets = Path.Combine(root, ReleaseAssetsFolder);
             if (Directory.Exists(assets))
             {
-                yield return new ReportExtra(assets, "unitgit/release-assets", "Unit Git release pictures");
+                yield return new ReportExtra(assets, "unitgit/release-assets", "Unit Git release pictures", binary: true);
             }
         }
     }

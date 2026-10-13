@@ -181,7 +181,7 @@ namespace Orbiters.Logger.Editor.UnitGit
 
         private static void AddCommits(string root, List<TimelineMarker> markers)
         {
-            var result = GitCli.Run(root, "log -n 500 --since=30.days --format=%h%x1f%at%x1f%s%x1f%an", 10000);
+            var result = GitCli.Run(root, 10000, "log", "-n", "500", "--since=30.days", "--format=%h%x1f%at%x1f%s%x1f%an");
             if (!result.Success)
             {
                 return;

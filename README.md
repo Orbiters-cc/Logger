@@ -1,5 +1,22 @@
 # Logger
 
+## 0.2.6 — 2026-10-13
+
+- **Get help** says on each card what goes in the report: Unity's logs hold your Windows user name, computer name,
+  machine id and license serial; the Git history holds every author's name and email; the scene export holds every file
+  the scene uses, purchased avatars and tools included: send it only to people you trust.
+- **Anonymize** (new, under Privacy) masks user and computer names, ids, serials, emails, Git authors, remote addresses,
+  avatar and blueprint ids and paths outside the project, in every text and in the AI request, and leaves out the scene
+  export and release pictures. Anonymizing hides clues too: whoever reads the report may find the problem harder to see.
+- Always masked, before any text is cut: tokens, keys, passwords, sign-in headers, cookies, Discord webhooks, private
+  keys, and an access token Unity Hub passes on the line after its flag.
+- **AI diagnosis** stays off until you turn it on (signing in no longer does); its card says what is sent to the AI
+  provider, and its answer is shown as plain text.
+- A report is written as `.partial` and renamed once complete: a cancel, a failure or a script reload never leaves a cut
+  zip. **Ask again** writes a new zip and swaps it in. Free space is checked first.
+- Git is read without taking its index lock, one read at a time, and stopped with its helpers at the time limit. The
+  window does much less work while it is open.
+
 ## 0.2.5 — 2026-10-10
 
 - **New logo**: an "L" made of log lines, in the top bar, the empty list, the Logger's own source chips and the window
@@ -219,27 +236,49 @@ from Git's own history of HEAD (`.git/logs/HEAD`), so no Git process runs. Click
 Orbiters › Get Help**) opens a window that packs what a helper needs into one zip. Each part is a card; a press turns it
 on or off, and the choice is remembered:
 
-- **AI diagnosis** (Orbiters members, through Orbiters Toolkit): the note, the Unity version and packages, the 40 most
-  important distinct messages (compile errors first, then the most frequent errors, warnings and the latest logs) with
-  the top of their stack traces, the Git branch and recent commit subjects, and the scene's numbers go to Orbiters'
-  AI (`POST logger/diagnosis`), which answers with a headline, a summary and up to five likely causes with steps. It
-  runs while the scene is exported; when it fails, **Ask again** in the result (after connecting if needed) adds the
-  answer to the file.
+- **AI diagnosis** (Orbiters members, through Orbiters Toolkit; off until turned on, and connecting never turns it on):
+  Orbiters passes the report to a third-party AI provider (which one: orbiters.cc/legal/ai) with `POST
+  logger/diagnosis`. It sends the note, the project name, Unity version, platform, system, render pipeline and package
+  list, and only from the parts that are on: the 40 most important distinct messages (compile errors first, then the
+  most frequent errors, warnings and the latest logs) with the top of their stack traces (Logs), the Git branch, the
+  number of changed files and the last 15 commit subjects (Git history), and the scene names, object counts and up to
+  40 top-level object names (Scene description). Never files. The answer is a headline, a summary and up to five likely
+  causes with steps, shown as plain text and escaped in the Markdown files. It runs while the scene is exported; when
+  it fails, **Ask again** in the result (after connecting if needed) writes the answer into the file.
 - **Logs**: `logs/logs.txt` (every log, oldest first), `logs/messages.txt` (every distinct message with its count,
-  first and last time and stack trace) and the last 32 MB of Unity's `Editor.log` and `Editor-prev.log`.
-- **Git history**: branch, last commit, remotes and Git LFS files, the last 300 commits with the files they touched,
-  uncommitted changes, the reflog and stashes; with Unit Git, its release records and pictures.
+  first and last time and stack trace) and the last 32 MB of Unity's `Editor.log` and `Editor-prev.log` (the previous
+  session, which may be another project). Unity's logs hold the Windows user name, computer name, Unity machine id,
+  license serial and project paths.
+- **Git history**: branch, last commit, remotes and Git LFS files, the last 300 commits with their author's name and
+  email and the files they touched, uncommitted changes, the reflog and stashes; with Unit Git, its release records
+  (avatar and blueprint ids) and the newest 64 MB of its release pictures. A repository without commits yet is fine.
 - **Scene description**: every object of the open scenes with its components (inactive objects, prefab instances and
-  missing scripts marked) and the files the scenes use as a folder tree with sizes.
+  missing scripts marked) and the files the scenes use as a folder tree with sizes (packages from the registry
+  included).
 - **Scene export**: the saved open scenes with their dependencies as a `.unitypackage` (unsaved changes are not in it;
-  the card says so, and how big it will be).
+  the card says so, and how big it will be). It holds those files as they are, purchased avatars, shaders and tools
+  included: the window says to send it only to people you trust, never in a public channel.
+
+**Anonymize** (under Privacy, off by default, remembered) also masks the Windows user name (with its 8.3 short and
+address spellings), computer name, machine and session ids, license serials, emails, Git authors (commits are listed
+without them), remote addresses, avatar and blueprint ids and paths outside the project, in every text of the report
+and in the AI request; the project folder becomes `%PROJECT%`, other folders `[path]`. Release pictures and the scene
+export can't be anonymized, so they are left out (the cards say so). It hides clues too: the window warns that the
+problem may be harder to find.
+
+Always masked, anonymized or not, before any text is cut: Orbiters, Git hosting and API tokens, `Authorization`
+headers (Bearer, Basic, token), secrets in addresses (`access_token=`, `key=`, `apiKey=`…), JSON and settings values
+named like secrets (`"token"`, `"password"`…), cookies, Discord webhooks, JSON web tokens, passwords in addresses
+(JSON-escaped ones too) and store license keys; the user folder becomes `%USERPROFILE%` in every spelling. Pictures
+and the scene export are copied as they are.
 
 The project's Unity version, platform, system, package list and manifests are always included, and `README.md` at the
-top of the zip sums it all up: the note, the project, the diagnosis, the messages that matter most, what was left out
-and what each file holds. In every text the report writes or sends, the user folder becomes `%USERPROFILE%` and
-Orbiters tokens, bearer tokens and passwords in addresses become `[masked]`. Git commands and file writing run on
-worker threads; the report carries on if the window is closed. **Copy a message to send** puts a short summary for a
-help channel on the clipboard.
+top of the zip sums it all up: the note, the project, the diagnosis, the messages that matter most, what was left out,
+what each file holds and what was masked. The zip is written as `….zip.partial` beside its final name and renamed once
+complete, after checking there is room for it: a cancel or a script reload (which stops the report; the window says so
+after it) leaves nothing behind. Git runs read-only (no optional locks, no password prompts, stopped with what it
+started at its timeout) from its installed location, never from the project folder. **Copy a message to send** puts a
+short summary on the clipboard, escaped so nothing in it becomes a link or a mention.
 
 ## Undo history timeline (beta)
 

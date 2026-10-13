@@ -22,9 +22,10 @@ namespace Orbiters.Logger.Editor
             if (!string.IsNullOrWhiteSpace(context.Note))
             {
                 text.Append("## What's going wrong\n\n");
+                // The note can hold a pasted log: escaped like everything that comes from elsewhere.
                 foreach (string line in context.Note.Split('\n'))
                 {
-                    text.Append("> ").Append(line.TrimEnd('\r')).Append('\n');
+                    text.Append("> ").Append(MarkdownText.Escape(line.TrimEnd('\r'))).Append('\n');
                 }
 
                 text.Append('\n');
@@ -52,7 +53,7 @@ namespace Orbiters.Logger.Editor
                     text.Append("| Git | ").Append(Cell(git.Branch)).Append(" at ").Append(git.Head).Append(" · ").Append(LoggerUi.Plural(git.Changed, "changed file")).Append(" |\n");
                 }
 
-                var scene = context.Scene;
+                var scene = context.Has(ReportPart.Scene) ? context.Scene : null;
                 if (scene != null)
                 {
                     text.Append("| Scene | ").Append(Cell(string.Join(", ", scene.Names))).Append(" · ").Append(LoggerUi.Plural(scene.Objects, "object"))
@@ -70,7 +71,7 @@ namespace Orbiters.Logger.Editor
             }
             else if (context.Has(ReportPart.Diagnosis) && context.DiagnosisError != null)
             {
-                text.Append("## AI diagnosis\n\nNot available: ").Append(context.DiagnosisError).Append("\n\n");
+                text.Append("## AI diagnosis\n\nNot available: ").Append(MarkdownText.Escape(context.DiagnosisError)).Append("\n\n");
             }
 
             var groups = context.Logs?.Groups;
@@ -79,11 +80,11 @@ namespace Orbiters.Logger.Editor
                 text.Append("## The messages that matter most\n\n");
                 foreach (var group in groups.Where(g => g.Level != LogLevel.Info).Take(15))
                 {
-                    text.Append("- **").Append(group.Level == LogLevel.Error ? "Error" : "Warning").Append("** ×").Append(group.Count).Append(" · ").Append(group.Source)
-                        .Append(" · `").Append(DiagnosisClient.FirstLine(group.Text)).Append('`');
+                    text.Append("- **").Append(group.Level == LogLevel.Error ? "Error" : "Warning").Append("** ×").Append(group.Count).Append(" · ")
+                        .Append(MarkdownText.Escape(group.Source)).Append(" · `").Append(DiagnosisClient.FirstLine(group.Text)).Append('`');
                     if (!string.IsNullOrEmpty(group.Known))
                     {
-                        text.Append("  \n  Known: ").Append(group.Known);
+                        text.Append("  \n  Known: ").Append(MarkdownText.Escape(group.Known));
                     }
 
                     text.Append('\n');
@@ -98,7 +99,7 @@ namespace Orbiters.Logger.Editor
                 text.Append("## Left out\n\n");
                 foreach (var step in parts)
                 {
-                    text.Append("- ").Append(step.Title).Append(": ").Append(step.Detail).Append('\n');
+                    text.Append("- ").Append(step.Title).Append(": ").Append(MarkdownText.Escape(step.Detail)).Append('\n');
                 }
 
                 text.Append('\n');
@@ -110,8 +111,7 @@ namespace Orbiters.Logger.Editor
                 text.Append("- `").Append(entry.Name).Append("` ").Append(entry.Label).Append('\n');
             }
 
-            text.Append("\nThe user folder is written ").Append(ReportPrivacy.UserFolder).Append("; Orbiters tokens, bearer tokens and passwords in addresses are ")
-                .Append(ReportPrivacy.Masked).Append(".\n");
+            text.Append('\n').Append(MarkdownText.Escape(context.Privacy.Describe())).Append('\n');
             return text.ToString();
         }
 

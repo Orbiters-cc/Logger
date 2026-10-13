@@ -20,17 +20,32 @@ namespace Orbiters.Logger.Editor
         private bool on;
         private bool available = true;
 
-        public ReportPart Part { get; }
-
         /// <summary>Room for something under the numbers (the sign-in buttons).</summary>
         public VisualElement Extra { get; }
 
-        public ReportCard(ReportPart part, LoggerGlyph glyph, string title, string tag, string description, Action<bool> toggled)
+        /// <summary>Links that stay whatever the card shows (where to read more).</summary>
+        public VisualElement Links { get; }
+
+        /// <summary>Adds a quiet link at the bottom of the card.</summary>
+        public void AddLink(string text, string tooltip, Action action)
         {
-            Part = part;
+            var link = LoggerUi.Pill(text, action, "ghost", LoggerGlyph.External, tooltip);
+            link.AddToClassList("rp-card__link");
+            Links.Add(link);
+            LoggerUi.Show(Links, true);
+        }
+
+        public ReportCard(ReportPart part, LoggerGlyph glyph, string title, string tag, string description, Action<bool> toggled)
+            : this(part.ToString().ToLowerInvariant(), glyph, title, tag, description, toggled)
+        {
+        }
+
+        /// <param name="kind">Names the card's colours in the style sheet ("rp-card--anonymize").</param>
+        public ReportCard(string kind, LoggerGlyph glyph, string title, string tag, string description, Action<bool> toggled)
+        {
             this.toggled = toggled;
             AddToClassList("rp-card");
-            AddToClassList("rp-card--" + part.ToString().ToLowerInvariant());
+            AddToClassList("rp-card--" + kind);
             var head = LoggerUi.Box("rp-card__head");
             var tile = LoggerUi.Box("rp-card__tile", PickingMode.Ignore);
             tile.Add(new LoggerIcon(glyph));
@@ -61,6 +76,9 @@ namespace Orbiters.Logger.Editor
             Extra = LoggerUi.Box("rp-card__extra");
             LoggerUi.Show(Extra, false);
             Add(Extra);
+            Links = LoggerUi.Box("rp-card__links");
+            LoggerUi.Show(Links, false);
+            Add(Links);
             focusable = true;
             LoggerUi.Press(this, () =>
             {

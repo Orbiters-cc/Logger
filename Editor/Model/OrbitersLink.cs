@@ -13,6 +13,9 @@ namespace Orbiters.Logger.Editor
         /// <summary>The full address of an API path on the server in use ("logger/explanations").</summary>
         internal static Func<string, string> ApiUrl = path => "https://api.orbiters.cc/" + path.TrimStart('/');
 
+        /// <summary>The full address of a page of the Orbiters website ("legal/ai").</summary>
+        internal static Func<string, string> SiteUrl = path => "https://orbiters.cc/" + path.TrimStart('/');
+
         /// <summary>The signed-in member's token, or null.</summary>
         internal static Func<string> Token = () => null;
 

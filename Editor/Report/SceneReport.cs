@@ -28,6 +28,9 @@ namespace Orbiters.Logger.Editor
     internal sealed class SceneFiles
     {
         public string[] Paths = Array.Empty<string>();
+
+        /// <summary>Where each file is on disk: a registry package's "Packages/…" lives in Library/PackageCache.</summary>
+        public string[] Physical = Array.Empty<string>();
         public long[] Sizes = Array.Empty<long>();
         public long Bytes;
     }
@@ -94,9 +97,22 @@ namespace Orbiters.Logger.Editor
             if (digest.Paths.Count > 0)
             {
                 files.Paths = AssetDatabase.GetDependencies(digest.Paths.ToArray(), true).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToArray();
+                files.Physical = files.Paths.Select(Physical).ToArray();
             }
 
             return files;
+        }
+
+        private static string Physical(string path)
+        {
+            try
+            {
+                return FileUtil.GetPhysicalPath(path);
+            }
+            catch (Exception)
+            {
+                return path;
+            }
         }
 
         /// <summary>Reads the size of every file; safe on a worker thread.</summary>
@@ -108,7 +124,7 @@ namespace Orbiters.Logger.Editor
             {
                 try
                 {
-                    var info = new FileInfo(files.Paths[i]);
+                    var info = new FileInfo(files.Physical.Length > i ? files.Physical[i] : files.Paths[i]);
                     files.Sizes[i] = info.Exists ? info.Length : 0;
                 }
                 catch (Exception)

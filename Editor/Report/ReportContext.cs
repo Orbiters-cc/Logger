@@ -72,6 +72,9 @@ namespace Orbiters.Logger.Editor
 
         public bool Has(ReportPart part) => Parts.Contains(part);
 
+        /// <summary>Names, ids, emails, remotes and outside paths are masked; files copied as they are stay out.</summary>
+        public bool Anonymize => Privacy.Anonymize;
+
         public IReadOnlyList<ReportEntry> Entries
         {
             get
@@ -98,10 +101,19 @@ namespace Orbiters.Logger.Editor
             }
         }
 
-        /// <summary>Writes <paramref name="text"/>, masked, as <paramref name="name"/> ("git/log.txt").</summary>
-        public void WriteText(string name, string text, string label)
+        /// <summary>
+        /// Writes <paramref name="text"/>, masked, as <paramref name="name"/> ("git/log.txt"); cut at
+        /// <paramref name="max"/> characters when given, after masking.
+        /// </summary>
+        public void WriteText(string name, string text, string label, int max = 0)
         {
-            File.WriteAllText(PathOf(name), Privacy.Mask(text), new UTF8Encoding(false));
+            string masked = Privacy.Mask(text);
+            if (max > 0 && masked.Length > max)
+            {
+                masked = masked.Substring(0, max) + "\n[Cut at " + LoggerUi.Count(max) + " characters.]\n";
+            }
+
+            File.WriteAllText(PathOf(name), masked, new UTF8Encoding(false));
             Add(name, label);
         }
 
@@ -118,16 +130,20 @@ namespace Orbiters.Logger.Editor
     {
         private readonly StreamWriter writer;
         private readonly ReportPrivacy privacy;
+        // Lines written one by one (a copied Editor.log) are masked knowing the previous ones: a "-accessToken" line
+        // announces a secret on the next.
+        private readonly ReportPrivacy.LineMasker lines;
 
         public ReportWriter(string path, ReportPrivacy privacy)
         {
             this.privacy = privacy;
+            lines = privacy.Lines();
             writer = new StreamWriter(path, false, new UTF8Encoding(false), 1 << 16) { NewLine = "\n" };
         }
 
         public long Length => writer.BaseStream.Length;
 
-        public void Line(string text = "") => writer.WriteLine(privacy.Mask(text));
+        public void Line(string text = "") => writer.WriteLine(lines.Mask(text));
 
         public void Write(string text) => writer.Write(privacy.Mask(text));
 

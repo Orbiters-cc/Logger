@@ -64,7 +64,21 @@ namespace Orbiters.Logger.Editor
                 return;
             }
 
+            // Unity in the background: nothing to see, nothing drawn. Drifting, 20 frames a second are plenty; racing
+            // (a report being made), every frame.
+            if (!UnityEditorInternal.InternalEditorUtility.isApplicationActive)
+            {
+                last = 0;
+                return;
+            }
+
             double now = EditorApplication.timeSinceStartup;
+            bool drifting = targetSpeed <= 1.5f && Mathf.Abs(speed - targetSpeed) < 0.05f;
+            if (drifting && last > 0 && now - last < 0.05d)
+            {
+                return;
+            }
+
             float dt = last <= 0 ? 0.016f : Mathf.Min(0.1f, (float)(now - last));
             last = now;
             speed = Mathf.Lerp(speed, targetSpeed, 1f - Mathf.Exp(-dt * 3f));
