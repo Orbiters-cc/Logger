@@ -3,6 +3,7 @@
 ## 0.2.7 — 2026-10-19
 
 - Sources: Mixer is known (`orbiters.mixer`); XRay Gizmos, now part of Orbiters Toolkit, is no longer a source of its own.
+- Explanations for Mixer's messages: an autosave or a mesh's vertex groups that could not be read, the Mixer Hierarchy unable to take Unity's place, the Blender link's port refused, a renderer's own mesh put back after an Undo.
 
 ## 0.2.6 — 2026-10-13
 

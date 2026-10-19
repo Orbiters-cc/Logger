@@ -4081,6 +4081,65 @@
         "To turn reload measuring off, untick Script reloads in the Logger's settings.",
         "For other switches: Edit › Preferences › Diagnostics, then reset the switches you don't need."
       ]
+    },
+    {
+      "id": "mixer.autosave-unreadable",
+      "needle": "[Mixer] The autosave of '",
+      "severity": "warning",
+      "source": "Mixer",
+      "title": "Mixer could not restore an edit in progress",
+      "summary": "Mixer autosaves the edits of each mesh being sculpted or painted under Library/Orbiters/Mixer/autosave and restores them after a script reload. This autosave could not be read (the message ends with the reason), so the edits made since the last commit are not back on that mesh.",
+      "fixes": [
+        "If the mesh still shows the edits, commit them now so they are saved as a mesh asset.",
+        "Otherwise redo the lost strokes; the mesh asset itself was never changed."
+      ]
+    },
+    {
+      "id": "mixer.working-mesh-restored",
+      "needle": "was showing a Mixer working mesh no session shows",
+      "severity": "harmless",
+      "source": "Mixer",
+      "title": "Mixer put a renderer's own mesh back",
+      "summary": "An Undo or Redo brought back a step recorded while this renderer was being edited in Mixer, which pointed it at Mixer's working copy (a mesh that is never saved) although no session shows it any more. Mixer noticed and put the original mesh back.",
+      "fixes": [
+        "Nothing to do: the renderer shows its own mesh. Press Edit in Mixer to work on it again."
+      ]
+    },
+    {
+      "id": "mixer.vertex-groups-unreadable",
+      "needle": "[Mixer] The vertex groups beside '",
+      "severity": "warning",
+      "source": "Mixer",
+      "title": "Mixer could not read a mesh's vertex groups",
+      "summary": "The vertex groups of a committed mesh are kept beside it in a <mesh>.mixer.json file. This one could not be read (the message ends with the reason), so the mesh opens without its groups.",
+      "fixes": [
+        "Fix or delete the .mixer.json file next to the mesh asset; the groups can be painted again in Mixer's Weights mode.",
+        "If the file was edited by hand, check that it is valid JSON."
+      ]
+    },
+    {
+      "id": "mixer.hierarchy-not-replaced",
+      "needle": "[Mixer] Couldn't put the Mixer Hierarchy in the Hierarchy's place",
+      "severity": "warning",
+      "source": "Mixer",
+      "title": "The Mixer Hierarchy could not take Unity's place",
+      "summary": "Mixer docks its Hierarchy window where Unity's Hierarchy is through Unity's internal dock API; this Unity build or layout did not let it, so Unity's Hierarchy stays open. Mixer tries again at each reload.",
+      "fixes": [
+        "Open Tools > Orbiters > Mixer Hierarchy and dock it yourself.",
+        "Turn off the Replace Unity's Hierarchy option in the Mixer Hierarchy's menu to stop the attempts."
+      ]
+    },
+    {
+      "id": "mixer.link-cannot-listen",
+      "needle": "[Mixer] The Blender link could not listen: ",
+      "severity": "problem",
+      "source": "Mixer",
+      "title": "Mixer's Blender link could not open its port",
+      "summary": "Mixer listens on a local TCP port for the Mixer extension of Blender and writes the port in an endpoint file under %LOCALAPPDATA%/Orbiters/Mixer. Opening the port failed (the message ends with the reason: a firewall rule, no free port, or the loopback interface refused), so Blender cannot connect to this editor.",
+      "fixes": [
+        "Allow Unity on the loopback interface in the firewall, or free the ports, then switch the link off and on in Mixer's Blender pill.",
+        "Sculpting, weights and the other Mixer tools work without the link."
+      ]
     }
   ]
 }
