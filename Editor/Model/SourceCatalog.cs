@@ -55,7 +55,7 @@ namespace Orbiters.Logger.Editor
             { "orbiters.toolkit", "Orbiters Toolkit" },
             { "orbiters.unitgit", "Unit Git" },
             { "orbiters.refit", "ReFit" },
-            { "orbiters.xraygizmos", "XRay Gizmos" },
+            { "orbiters.mixer", "Mixer" },
             { "orbiters.logger", "Logger" },
             { "orbiters.unitypackagemanager", "UnityPackageManager" },
             { "orbiters.touchworld", "Touch World" },
@@ -126,7 +126,7 @@ namespace Orbiters.Logger.Editor
             { "orbiters toolkit", Hex("#35d08a") },
             { "unit git", Hex("#3cf29a") },
             { "refit", Hex("#3cf29a") },
-            { "xray gizmos", Hex("#3cf29a") },
+            { "mixer", Hex("#3cf29a") },
             { "logger", Hex("#3cf29a") },
             { "timings", Hex("#f2c46d") },
         };

@@ -195,7 +195,7 @@
       "fixes": [
         "Nothing to do if it's the body or another large mesh.",
         "If it's unexpected (an object far from the avatar, a huge particle mesh), move or remove it: every other mesh's bounds grow toward it.",
-        "A name starting with __XRayGizmos_ is XRay Gizmos' armature overlay: update XRay Gizmos (0.2.8 and newer leave it out of builds)."
+        "A name starting with __XRayGizmos_ is the Orbiters Toolkit's XRay armature overlay, which is left out of builds; if it reached one, update Orbiters Toolkit."
       ]
     },
     {
@@ -2710,7 +2710,7 @@
       "title": "A ReFit self-check was skipped",
       "summary": "The check '{test}' didn't run; skipped checks are reported as SKIP, never as PASS. The reason given: {reason}",
       "fixes": [
-        "Nothing to do in a normal run: checks that change the selection or depend on the open scene only run from their own items under Tools › Orbiters › ReFit, and checks that need licensed test models, VRCFury, the VRChat SDK or XRay Gizmos skip when those are missing."
+        "Nothing to do in a normal run: checks that change the selection or depend on the open scene only run from their own items under Tools › Orbiters › ReFit, and checks that need licensed test models, VRCFury, the VRChat SDK or the Toolkit's XRay gizmos skip when those are missing."
       ]
     },
     {

@@ -26,7 +26,7 @@ namespace Orbiters.Logger.Editor
             { "My Avatar", SourceCatalog.Hex("#38d6f5") },
             { "ReFit", SourceCatalog.Hex("#ff7ac0") },
             { "Unit Git", SourceCatalog.Hex("#ff9b54") },
-            { "XRay Gizmos", SourceCatalog.Hex("#ffd34e") },
+            { "Mixer", SourceCatalog.Hex("#ffd34e") },
             { "Logger", SourceCatalog.Hex("#9fb3c8") },
             { "Orbiters Toolkit", SourceCatalog.Hex("#2fd39b") },
             { "Touch World", SourceCatalog.Hex("#ff6b6b") },

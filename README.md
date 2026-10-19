@@ -1,5 +1,9 @@
 # Logger
 
+## 0.2.7 — 2026-10-19
+
+- Sources: Mixer is known (`orbiters.mixer`); XRay Gizmos, now part of Orbiters Toolkit, is no longer a source of its own.
+
 ## 0.2.6 — 2026-10-13
 
 - **Get help** says on each card what goes in the report: Unity's logs hold your Windows user name, computer name,
