@@ -2,6 +2,14 @@
 
 ## 0.2.7 — 2026-10-19
 
+- Mixer's source chips carry its logo, as MCB's, My Avatar's, ReFit's and the Logger's do.
+- 19 more explanations: Unity's "Bones do not match bindpose", "Main Object Name … does not match filename", XR Plug-in
+  Management's package list timeout, native leak detection, the test framework's IgnoreFailingMessages, and C#'s
+  reference comparison warnings (CS0252, CS0253); ReFit's body shrink, kept fits and cache clean-up at upload; Mixer's
+  commit saved to a new file and Orbiters desktop splats that could not be imported; MCB's version switch undone past
+  the files it keeps (or files it could not put back), its kept copies of changed files and its Blender export clean-up;
+  My Avatar's menu clean-up, optimization summary and accessory names.
+
 - Sources: Mixer is known (`orbiters.mixer`); the avatar gizmos, now part of Orbiters Toolkit, are no longer a source of their own.
 - Explanations for Mixer's messages: an autosave or a mesh's vertex groups that could not be read, the Mixer Hierarchy unable to take Unity's place, the Blender link's port refused, a renderer's own mesh put back after an Undo.
 - Sources: Mixer's and ReFit's messages are theirs when the stack trace has no source file (by their namespace), MCB's by its classes' `MCB` prefix, and a `[Mixer]` message without a stack trace is Mixer's (they went to Unity or Project).

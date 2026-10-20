@@ -1258,6 +1258,71 @@
       ]
     },
     {
+      "id": "toolkit.refit-body-shrink",
+      "updated": "2026-10-20",
+      "needle": "[Orbiters] ReFit: ",
+      "pattern": "^\\[Orbiters\\] ReFit: (?<body>.+?) shrinks under (?<clothing>.+?) \\((?<count>\\d+) vertices, (?<how>[^)]+)\\)\\.",
+      "levels": [
+        "log"
+      ],
+      "severity": "harmless",
+      "source": "Orbiters Toolkit",
+      "title": "ReFit: {body} shrinks under {clothing} in the upload",
+      "summary": "When {clothing} was fitted, ReFit noted the {count} vertices of {body} that would show through it and how far to pull them in. The upload gets that as a blendshape of {body}: on while the clothing is worn and, when the clothing has menu toggles, following them ({how}). Only the build copy changes.",
+      "fixes": [
+        "Nothing to do.",
+        "If the body shows through or looks dented, fit the clothing again with ReFit (its record keeps the shrink), or turn the body shrink off in the fit's options."
+      ]
+    },
+    {
+      "id": "toolkit.refit-kept-fits",
+      "updated": "2026-10-20",
+      "needle": "[Orbiters] ReFit: ",
+      "pattern": "^\\[Orbiters\\] ReFit: (?<clothing>.+?) offers (?<count>\\d+) fits in the menu \\((?<menu>[^)]+)\\)\\.",
+      "levels": [
+        "log"
+      ],
+      "severity": "harmless",
+      "source": "Orbiters Toolkit",
+      "title": "ReFit: {clothing} gets {count} fits in the menu",
+      "summary": "The fits kept for {clothing} (Keep this fit in ReFit) become blendshapes of its mesh in the upload, and a menu at {menu} switches between them in the game, one at a time; the fit worn in the scene is the one on at first.",
+      "fixes": [
+        "Nothing to do.",
+        "To have fewer choices, remove kept fits in ReFit's record of the clothing."
+      ]
+    },
+    {
+      "id": "toolkit.refit-cache-pruned",
+      "updated": "2026-10-20",
+      "needle": "refit cache entries (or folders) no engine finds any more.",
+      "levels": [
+        "log"
+      ],
+      "severity": "harmless",
+      "source": "Orbiters Toolkit",
+      "title": "Old ReFit cache entries were removed",
+      "summary": "ReFit keeps the meshes it fitted under Assets/Orbiters/ReFit/Cache, one folder per engine version. After an update, the entries of older versions (and of the cache's former layout) are removed once the new version stores or reads a result, since no engine reads them any more. The fitted meshes your avatars use stay.",
+      "fixes": [
+        "Nothing to do."
+      ]
+    },
+    {
+      "id": "toolkit.xray-tests-pass",
+      "updated": "2026-10-20",
+      "needle": " Tests] PASS: ",
+      "pattern": "^\\[XRay (?<suite>[A-Za-z]+) Tests\\] PASS: ",
+      "levels": [
+        "log"
+      ],
+      "severity": "harmless",
+      "source": "Orbiters Toolkit",
+      "title": "Orbiters Toolkit's {suite} tests passed",
+      "summary": "The avatar gizmos' (bones, weight paint, mesh edges) self-tests ran from the Test Runner and passed.",
+      "fixes": [
+        "Nothing to do."
+      ]
+    },
+    {
       "id": "logger.test-benchmark",
       "needle": "[Logger tests]",
       "severity": "harmless",
@@ -2041,6 +2106,67 @@
       ]
     },
     {
+      "id": "mcb.version-switch-files-dropped",
+      "updated": "2026-10-20",
+      "needle": "[MCB] The version switch was ",
+      "pattern": "^\\[MCB\\] The version switch was (?<how>undone|redone) in the scene, but MCB only keeps the files of the last (?<count>\\d+) switches",
+      "severity": "warning",
+      "source": "MCB",
+      "title": "The version switch was {how}, but its files were not kept",
+      "summary": "Undo and Redo bring the avatar back in the scene; MCB also puts back the model files a version switch replaced, but it keeps those files for the last {count} switches only. This switch is older, so the files listed under the message were left as they are and may not match the avatar the scene now shows.",
+      "fixes": [
+        "Apply the version you want again from MCB's Versions card: the files and the avatar then match.",
+        "Or reset the avatar from MCB."
+      ]
+    },
+    {
+      "id": "mcb.version-switch-files-failed",
+      "updated": "2026-10-20",
+      "needle": "in the scene, but these files could not be restored:",
+      "pattern": "^\\[MCB\\] The version switch was (?<how>undone|redone) in the scene, but these files could not be restored:",
+      "severity": "problem",
+      "source": "MCB",
+      "title": "The version switch was {how}, but some files could not be put back",
+      "summary": "Undo and Redo bring the avatar back in the scene and MCB puts back the model files the switch replaced. Writing the files listed under the message failed (open in another program, read-only, or a full disk), so they may not match the avatar the scene shows.",
+      "fixes": [
+        "Close programs that may hold the files (Blender, an image editor), then apply the version you want again from MCB's Versions card.",
+        "Or reset the avatar from MCB."
+      ]
+    },
+    {
+      "id": "mcb.file-kept-changed",
+      "updated": "2026-10-20",
+      "needle": "[FileManager] Kept '",
+      "pattern": "^\\[FileManager\\] Kept '(?<path>[^']+)': this version ships a different copy",
+      "levels": [
+        "warning"
+      ],
+      "severity": "info",
+      "source": "MCB",
+      "title": "MCB kept your copy of {path}",
+      "summary": "Applying a version installs the files its logic package ships and replaces the ones MCB installed before. This file differs from what this version ships and from every copy MCB installed, so it may hold your own changes: MCB left it as it is.",
+      "fixes": [
+        "If you did not change it, delete it and apply the version again to get the shipped copy.",
+        "If you did, nothing to do; compare it with the version's copy when something misbehaves."
+      ]
+    },
+    {
+      "id": "mcb.blender-export-cleanup",
+      "updated": "2026-10-20",
+      "needle": "[BlenderExport] Removed ",
+      "pattern": "^\\[BlenderExport\\] Removed (?<count>\\d+) copies of advanced-mesh Blender exports nothing uses any more \\((?<size>[^)]+)\\)\\.",
+      "levels": [
+        "log"
+      ],
+      "severity": "harmless",
+      "source": "MCB",
+      "title": "MCB removed {count} unused copies of Blender exports ({size})",
+      "summary": "Imports of Blender's Export for MCB keep a copy of each export for the advanced mesh workflow. Copies that no scene or prefab uses any more went to the Recycle Bin; the ones in use, and those made in this session, stay.",
+      "fixes": [
+        "Nothing to do."
+      ]
+    },
+    {
       "id": "refit.tests.expected-diagnostic",
       "needle": "[ReFit] ",
       "stackNeedle": "Orbiters.ReFit.Editor.Tests.ReFitDeterministicTestRunner",
@@ -2816,6 +2942,56 @@
       ]
     },
     {
+      "id": "myavatar.menu-upload",
+      "updated": "2026-10-20",
+      "needle": "[My Avatar] Menu: ",
+      "pattern": "^\\[My Avatar\\] Menu: (?<items>\\d+) items left out of the upload \\((?<folders>\\d+) folders emptied[^)]*\\), (?<icons>\\d+) default icons\\.",
+      "levels": [
+        "log"
+      ],
+      "severity": "harmless",
+      "source": "My Avatar",
+      "title": "My Avatar's menu clean-up: {items} items left out, {icons} icons added",
+      "summary": "At upload, on the build copy only, My Avatar removes the menu items deleted in its menu editor (and the avatar's own menu when “Remove default menu” is on, and the toggles of looks hidden in My Avatar), empties {folders} folders that held only those, and gives {icons} items without an icon Orbiters' default icons. The avatar in the scene is unchanged.",
+      "fixes": [
+        "Nothing to do: edit the menu in My Avatar to change what goes."
+      ]
+    },
+    {
+      "id": "myavatar.optimization-summary",
+      "updated": "2026-10-20",
+      "needle": "[My Avatar] Optimization (",
+      "pattern": "^\\[My Avatar\\] Optimization \\((?<level>[^)]+)\\): (?<report>[^\\r\\n]+?)\\.?$",
+      "levels": [
+        "log"
+      ],
+      "severity": "harmless",
+      "source": "My Avatar",
+      "title": "My Avatar optimized the upload ({level})",
+      "summary": "What My Avatar's optimization changed on the build copy of the avatar: {report}. The avatar in the scene and its assets are unchanged.",
+      "fixes": [
+        "Nothing to do.",
+        "To change it, pick another level (or off) in My Avatar's Optimization card; it shows the estimate before you upload."
+      ]
+    },
+    {
+      "id": "myavatar.accessory-names-failed",
+      "updated": "2026-10-20",
+      "needle": "[My Avatar] Could not name the accessories: ",
+      "pattern": "^\\[My Avatar\\] Could not name the accessories: (?<reason>[^\\r\\n]+)",
+      "levels": [
+        "log"
+      ],
+      "severity": "harmless",
+      "source": "My Avatar",
+      "title": "My Avatar could not ask Orbiters for the accessories' names",
+      "summary": "My Avatar asks Orbiters for readable names of the accessories it recognises. The request failed ({reason}), so the accessories keep the names of their objects for now; it asks again later.",
+      "fixes": [
+        "Nothing to do: names come back once Orbiters answers (HTTP 502 or 503: the server is restarting).",
+        "Check that you are signed in to Orbiters if it keeps failing."
+      ]
+    },
+    {
       "id": "vrchat.thumbnail-already-uploaded",
       "needle": "This file was already uploaded",
       "stackNeedle": "UpdateAvatarImage",
@@ -3112,6 +3288,24 @@
       ],
       "link": "https://learn.microsoft.com/dotnet/csharp/language-reference/compiler-messages/",
       "linkLabel": "C# compiler messages"
+    },
+    {
+      "id": "compiler.cs0252",
+      "updated": "2026-10-20",
+      "needle": "Possible unintended reference comparison",
+      "pattern": "^(?<file>[^\\r\\n(]+)\\((?<line>\\d+),\\d+\\): warning (?<code>CS025[23]): Possible unintended reference comparison; to get a value comparison, cast the (?<side>left|right) hand side to type '(?<type>[^']+)'",
+      "levels": [
+        "warning"
+      ],
+      "severity": "info",
+      "source": "C# compiler",
+      "title": "{code}: compared by reference in {file}",
+      "summary": "One side of an == or != has a type that brings its own comparison ({type}), the other side only object or an interface, so C# compares the two references instead. With Unity objects that matters: a destroyed object still compares as not null, because Unity's own null check is skipped.",
+      "fixes": [
+        "Cast the {side} hand side to {type} (line {line}) to compare as that type does, Unity's null check included.",
+        "If comparing references is what you want, write ReferenceEquals(a, b) (in tests, Is.SameAs) to say so and silence the warning.",
+        "In a package's code, update the package: the warning does not stop it from compiling."
+      ]
     },
     {
       "id": "compiler.duplicate-dll",
@@ -4087,6 +4281,70 @@
       ]
     },
     {
+      "id": "unity.bones-bindpose",
+      "updated": "2026-10-20",
+      "needle": "Bones do not match bindpose.",
+      "levels": [
+        "error"
+      ],
+      "severity": "problem",
+      "source": "Unity",
+      "title": "A skinned mesh has a different number of bones than its mesh expects",
+      "summary": "A Skinned Mesh Renderer's bone list and its mesh's bind poses must have the same length: one bind pose per bone. They differ here, so Unity can't skin the mesh and draws it unposed (or not at all). It happens when a mesh is put on a renderer made for another skeleton, when bones were removed or the bone list emptied by a tool or a script, or when a mesh made by a script has bind poses but its renderer has no bones yet.",
+      "fixes": [
+        "Click the log's object (or use the Logger's context) to find the renderer, then compare its Bones list in the Debug Inspector with the mesh it uses.",
+        "Put back the mesh the renderer came with, or re-import the model; a clothing mesh needs the armature it was made for (merge it with VRCFury's Armature Link, Modular Avatar or ReFit rather than reassigning the mesh).",
+        "If it only shows while a tool's tests run, nothing to do: the test made the mesh and removes it."
+      ]
+    },
+    {
+      "id": "unity.main-object-name",
+      "updated": "2026-10-20",
+      "priority": -5,
+      "needle": "Main Object Name '",
+      "pattern": "^Main Object Name '(?<name>[^']*)' does not match filename '(?<file>[^']*)'",
+      "levels": [
+        "warning"
+      ],
+      "severity": "harmless",
+      "source": "Unity",
+      "title": "An asset saved as “{file}” holds an object named “{name}”",
+      "summary": "Unity expects the main object of an asset file to carry the file's name. A tool or a script saved an asset whose object has another name (or none), and Unity renamed it to match the file when importing it. Nothing is lost.",
+      "fixes": [
+        "Nothing to do: the asset works and now has the file's name.",
+        "If you wrote the code that saves it, set the object's name to the file name (without the extension) before saving."
+      ]
+    },
+    {
+      "id": "unity.xr-package-timeout",
+      "updated": "2026-10-20",
+      "needle": "XR Plug-in Management Warning: Timeout trying to get package list",
+      "levels": [
+        "warning"
+      ],
+      "severity": "harmless",
+      "source": "Unity",
+      "title": "XR Plug-in Management could not list the packages in time",
+      "summary": "XR Plug-in Management asks the Package Manager for the installed packages when the editor starts. The Package Manager was busy (resolving or importing packages), so it gave up waiting. It only affects the XR settings page; VRChat projects don't use it.",
+      "fixes": [
+        "Nothing to do. If you use XR Plug-in Management, open its settings page again once the editor is idle."
+      ]
+    },
+    {
+      "id": "unity.leak-detected-persistent",
+      "updated": "2026-10-20",
+      "needle": "Leak Detected : Persistent allocates",
+      "pattern": "^Leak Detected : Persistent allocates (?<count>\\d+) individual allocations",
+      "severity": "harmless",
+      "source": "Unity",
+      "title": "Unity found {count} native allocations never freed",
+      "summary": "Some code (Unity's or a package's) allocated native memory with Allocator.Persistent (a NativeArray, a NativeList) and never disposed of it before a script reload or the end of Play Mode. The memory is freed when the editor closes. A few are common and harmless; a count that grows on every reload means a package keeps leaking.",
+      "fixes": [
+        "Nothing to do for a handful.",
+        "To find who leaks: Preferences > Jobs > Leak Detection Level > Enabled With Stack Trace, then reproduce: the next message has the stack of the allocation."
+      ]
+    },
+    {
       "id": "mixer.autosave-unreadable",
       "needle": "[Mixer] The autosave of '",
       "severity": "warning",
@@ -4143,6 +4401,57 @@
       "fixes": [
         "Allow Unity on the loopback interface in the firewall, or free the ports, then switch the link off and on in Mixer's Blender pill.",
         "Sculpting, weights and the other Mixer tools work without the link."
+      ]
+    },
+    {
+      "id": "mixer.commit-new-file",
+      "updated": "2026-10-20",
+      "needle": "could not be updated in place: the commit of ",
+      "pattern": "^\\[Mixer\\] '(?<path>[^']+)' could not be updated in place: the commit of (?<mesh>.+?) goes to a file of its own\\.",
+      "levels": [
+        "warning"
+      ],
+      "severity": "info",
+      "source": "Mixer",
+      "title": "Mixer saved {mesh}'s commit in a new file",
+      "summary": "Mixer updates a mesh it saved before in place, so everything pointing at it follows. After writing {path}, the file did not hold the edits (Unity kept its old data: the file is read-only, locked by version control, or changed by an importer), so the commit went to a new mesh asset and the renderer now uses it. The old file is as it was.",
+      "fixes": [
+        "Nothing to do: the edits are saved and shown.",
+        "Delete the old file if nothing else uses it (the Mixer Project window's target button shows where it is used).",
+        "If it happens every time, check the file is not read-only or locked, then update Orbiters Toolkit."
+      ]
+    },
+    {
+      "id": "mixer.splats-import-failed",
+      "updated": "2026-10-20",
+      "needle": "Mixer: the splats Orbiters desktop sent could not be imported: ",
+      "pattern": "^Mixer: the splats Orbiters desktop sent could not be imported: (?<reason>[^\\r\\n]+)",
+      "levels": [
+        "error"
+      ],
+      "severity": "problem",
+      "source": "Mixer",
+      "title": "Mixer could not import the splats Orbiters desktop sent",
+      "summary": "Orbiters desktop's “Send to Mixer” left a request for this editor, pointing at a session folder whose reconstruction/splats.ply Mixer imports. That failed: {reason}",
+      "fixes": [
+        "“No splats at”: the session folder or its reconstruction is missing (moved, deleted, or the reconstruction did not finish). Finish or open the session in Orbiters desktop and send it again.",
+        "If the file exists, make sure nothing else has it open and that the disk is not full, then send it again."
+      ]
+    },
+    {
+      "id": "unity.test-ignore-failing-messages",
+      "updated": "2026-10-20",
+      "needle": "IgnoreFailingMessages:",
+      "pattern": "^\\s*IgnoreFailingMessages:(?<state>true|false)",
+      "levels": [
+        "log"
+      ],
+      "severity": "harmless",
+      "source": "Unity Test Framework",
+      "title": "A test turned error checking {state}",
+      "summary": "Unity's test framework notes when a test sets LogAssert.ignoreFailingMessages: while it is true, errors logged during that test don't fail it. It comes from a test that expects errors from outside its own code.",
+      "fixes": [
+        "Nothing to do."
       ]
     }
   ]

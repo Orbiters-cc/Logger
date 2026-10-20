@@ -12,12 +12,13 @@ namespace Orbiters.Logger.Editor
         Mcb,
         MyAvatar,
         ReFit,
-        Logger
+        Logger,
+        Mixer
     }
 
     /// <summary>
     /// Micro logos of the Orbiters tools for source chips, drawn from each tool's own geometry (MCB's polygons, ReFit's
-    /// bars, My Avatar's and the Logger's SVG) so they stay crisp at 9 px and need no texture or package reference.
+    /// bars, Mixer's M, My Avatar's and the Logger's SVG) so they stay crisp at 9 px and need no texture or package reference.
     /// </summary>
     internal sealed class SourceLogo : VisualElement
     {
@@ -32,6 +33,13 @@ namespace Orbiters.Logger.Editor
         {
             new Rect(0f, 0f, 39f, 3.72f), new Rect(0f, 12.69f, 39f, 9.87f), new Rect(0f, 31.92f, 9.27f, 3.08f),
             new Rect(14.99f, 31.92f, 9.27f, 3.08f), new Rect(29.73f, 31.92f, 9.27f, 3.08f)
+        };
+
+        // Mixer's logo (240 x 242): an M whose legs fold in and meet at a point.
+        private static readonly Vector2[] MixerPath =
+        {
+            V(71.5f, 241.5f), V(0f, 241.5f), V(92f, 149.5f), V(50.5f, 112.5f), V(50.5f, 152f), V(0f, 202.5f), V(0f, 0f), V(120f, 101.5f),
+            V(239.5f, 0.5f), V(239.5f, 202.5f), V(189f, 152f), V(189f, 112.5f), V(147.5f, 149.5f), V(239.5f, 241.5f), V(168.5f, 241.5f), V(120f, 193f)
         };
 
         // My Avatar's logo (309 x 258); the fifth path is filled even-odd.
@@ -68,6 +76,8 @@ namespace Orbiters.Logger.Editor
                     return SourceLogoKind.ReFit;
                 case "logger":
                     return SourceLogoKind.Logger;
+                case "mixer":
+                    return SourceLogoKind.Mixer;
                 default:
                     return SourceLogoKind.None;
             }
@@ -76,7 +86,7 @@ namespace Orbiters.Logger.Editor
         /// <summary>Width over height of each logo.</summary>
         public static float Aspect(SourceLogoKind kind) =>
             kind == SourceLogoKind.Mcb ? 645f / 208f : kind == SourceLogoKind.MyAvatar ? 309f / 258f : kind == SourceLogoKind.ReFit ? 39f / 35f :
-            kind == SourceLogoKind.Logger ? LoggerLogo.Size.x / LoggerLogo.Size.y : 1f;
+            kind == SourceLogoKind.Logger ? LoggerLogo.Size.x / LoggerLogo.Size.y : kind == SourceLogoKind.Mixer ? 240f / 242f : 1f;
 
         public void Set(SourceLogoKind value, Color tint, float height)
         {
@@ -105,7 +115,8 @@ namespace Orbiters.Logger.Editor
                 return;
             }
 
-            Vector2 size = kind == SourceLogoKind.Mcb ? new Vector2(645f, 208f) : kind == SourceLogoKind.MyAvatar ? new Vector2(309f, 258f) : new Vector2(39f, 35f);
+            Vector2 size = kind == SourceLogoKind.Mcb ? new Vector2(645f, 208f) : kind == SourceLogoKind.MyAvatar ? new Vector2(309f, 258f)
+                : kind == SourceLogoKind.Mixer ? new Vector2(240f, 242f) : new Vector2(39f, 35f);
             float scale = Mathf.Min(rect.width / size.x, rect.height / size.y);
             var origin = new Vector2(rect.x + (rect.width - size.x * scale) * 0.5f, rect.y + (rect.height - size.y * scale) * 0.5f);
             Vector2 P(float x, float y) => origin + new Vector2(x, y) * scale;
@@ -127,6 +138,17 @@ namespace Orbiters.Logger.Editor
                         painter.Fill();
                     }
 
+                    break;
+                case SourceLogoKind.Mixer:
+                    painter.BeginPath();
+                    painter.MoveTo(P(MixerPath[0].x, MixerPath[0].y));
+                    for (int i = 1; i < MixerPath.Length; i++)
+                    {
+                        painter.LineTo(P(MixerPath[i].x, MixerPath[i].y));
+                    }
+
+                    painter.ClosePath();
+                    painter.Fill();
                     break;
                 case SourceLogoKind.ReFit:
                     foreach (var bar in ReFitBars)
