@@ -53,6 +53,13 @@ namespace Orbiters.Logger.Editor
         public string Link { get; set; }
         public string LinkLabel { get; set; }
 
+        /// <summary>
+        /// When the text last changed (yyyy-MM-dd), empty when unknown. The Orbiters server's copy of an entry replaces the
+        /// Logger's own only when it is at least as new: a server not yet given a release's texts never brings back older
+        /// advice.
+        /// </summary>
+        internal string Updated = string.Empty;
+
         internal ExplanationOrigin Origin;
         private Regex regex;
         private bool patternFailed;
@@ -112,8 +119,9 @@ namespace Orbiters.Logger.Editor
 
     /// <summary>
     /// Explanations for known logs: the Logger's own list (shipped with it, see <see cref="KnownLogs"/>), the newer list
-    /// from the Orbiters server when it could be downloaded (it replaces entries with the same id and adds others), and
-    /// what packages add with <see cref="Register"/>, which comes first.
+    /// from the Orbiters server when it could be downloaded (it replaces entries with the same id, unless the Logger's own
+    /// is newer, see <see cref="LogExplanation.Updated"/>, and adds others), and what packages add with
+    /// <see cref="Register"/>, which comes first.
     /// </summary>
     public static class LogExplanations
     {
@@ -311,13 +319,30 @@ namespace Orbiters.Logger.Editor
 
             var merged = new List<LogExplanation>(custom.Count + remote.Count + local.Count);
             var ids = new HashSet<string>(StringComparer.Ordinal);
+            // The Logger's entries that say when they changed: a server's older copy of one gives way to it (at its place).
+            var dated = new Dictionary<string, LogExplanation>(StringComparer.Ordinal);
+            foreach (var entry in local)
+            {
+                if (!string.IsNullOrEmpty(entry.Updated))
+                {
+                    dated[entry.Id] = entry;
+                }
+            }
+
             foreach (var list in new[] { custom, remote, local })
             {
                 foreach (var entry in list)
                 {
-                    if (ids.Add(entry.Id))
+                    var chosen = entry;
+                    if (entry.Origin == ExplanationOrigin.Remote && dated.TryGetValue(entry.Id, out var own) &&
+                        string.CompareOrdinal(own.Updated, entry.Updated ?? string.Empty) > 0)
                     {
-                        merged.Add(entry);
+                        chosen = own;
+                    }
+
+                    if (ids.Add(chosen.Id))
+                    {
+                        merged.Add(chosen);
                     }
                 }
             }

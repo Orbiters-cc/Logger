@@ -22,6 +22,8 @@ namespace Orbiters.Logger.Editor
         public string[] fixes;
         public string link;
         public string linkLabel;
+        /// <summary>When the entry's text last changed (yyyy-MM-dd); see <see cref="LogExplanation.Updated"/>.</summary>
+        public string updated;
     }
 
     /// <summary>A list of explanations: the Logger's file, or the Orbiters server's answer (with its revision).</summary>
@@ -120,7 +122,8 @@ namespace Orbiters.Logger.Editor
                 Summary = data.summary ?? string.Empty,
                 Fixes = data.fixes ?? Array.Empty<string>(),
                 Link = string.IsNullOrEmpty(data.link) ? null : data.link,
-                LinkLabel = string.IsNullOrEmpty(data.linkLabel) ? null : data.linkLabel
+                LinkLabel = string.IsNullOrEmpty(data.linkLabel) ? null : data.linkLabel,
+                Updated = data.updated ?? string.Empty
             };
         }
 

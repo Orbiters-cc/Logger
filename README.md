@@ -4,6 +4,8 @@
 
 - Sources: Mixer is known (`orbiters.mixer`); the avatar gizmos, now part of Orbiters Toolkit, are no longer a source of their own.
 - Explanations for Mixer's messages: an autosave or a mesh's vertex groups that could not be read, the Mixer Hierarchy unable to take Unity's place, the Blender link's port refused, a renderer's own mesh put back after an Undo.
+- Sources: Mixer's and ReFit's messages are theirs when the stack trace has no source file (by their namespace), MCB's by its classes' `MCB` prefix, and a `[Mixer]` message without a stack trace is Mixer's (they went to Unity or Project).
+- Explanations: an entry can say when its text last changed (`updated`); the Orbiters server's copy of it replaces the Logger's own only when it is as new. A server not yet given a release's texts no longer brings back older advice after a download (the avatar gizmos' and ReFit's skipped checks named XRay Gizmos again, and the temporary memory notices lost the "Script reloads by package" cause).
 
 ## 0.2.6 — 2026-10-13
 
@@ -366,10 +368,12 @@ The Logger's own explanations are in `Editor/Knowledge/explanations.json` (`{ "e
 entry: `id`, `needle` (text the message must contain, checked first), optional `pattern` (.NET regex with named
 groups for `{name}` placeholders), `stackNeedle`, `levels` (`error`, `warning`, `log`), `priority` (catch-alls use
 negative values), `severity` (`harmless`, `info`, `warning`, `problem`, `blocking`), `source`, `title`, `summary`,
-`fixes`, `link`, `linkLabel`. Entries tied to a stack trace are tried first, then by priority, then in file order.
+`fixes`, `link`, `linkLabel`, and `updated` (yyyy-MM-dd, when the entry's text last changed). Entries tied to a stack
+trace are tried first, then by priority, then in file order.
 
 The same list lives on the Orbiters server (`GET /logger/explanations`, with `If-None-Match`), where it is updated
 between releases: the Logger asks for it every six hours, keeps the last answer per user in
-`%LOCALAPPDATA%/Orbiters/Logger/`, and server entries replace local ones with the same id. With Orbiters Toolkit
+`%LOCALAPPDATA%/Orbiters/Logger/`, and server entries replace local ones with the same id, unless the local one's
+`updated` is later (a server entry without it is older than a dated local one). With Orbiters Toolkit
 installed (optional `Orbiters.Logger.Editor.Toolkit` assembly), it asks the server Orbiters tools use, as the
 signed-in member.

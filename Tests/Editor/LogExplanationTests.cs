@@ -1,3 +1,4 @@
+using System.Linq;
 using NUnit.Framework;
 
 namespace Orbiters.Logger.Editor.Tests
@@ -106,6 +107,45 @@ namespace Orbiters.Logger.Editor.Tests
 
             Assert.AreEqual("csharp.null-reference", IdOf("NullReferenceException: x"));
             Assert.AreNotEqual("From the server", LogExplanations.Get(LogExplanations.Match("NullReferenceException: x", "", LogLevel.Error)).Title);
+        }
+
+        [Test]
+        public void AServerCopyOlderThanTheLoggersOwnEntryDoesNotReplaceIt()
+        {
+            const string condition = "TLS Allocator ALLOC_TEMP_TLS, underlying allocator ALLOC_TEMP_MAIN has unfreed allocations, size 37";
+            string own = LogExplanations.Get(LogExplanations.Match(condition, "", LogLevel.Warning)).Title;
+            string Server(string updated) => @"{ ""explanations"": [
+                { ""id"": ""unity.tls-allocator"", ""needle"": ""has unfreed allocations"", ""severity"": ""info"", ""source"": ""Tests"", ""title"": ""From the server""" +
+                (updated == null ? string.Empty : @", ""updated"": """ + updated + @"""") + " } ] }";
+            try
+            {
+                LogExplanations.SetRemote(KnownLogs.Parse(Server(null)));
+                Assert.AreEqual(own, LogExplanations.Get(LogExplanations.Match(condition, "", LogLevel.Warning)).Title,
+                    "A server copy that does not say when it changed is older than the Logger's dated entry.");
+                LogExplanations.SetRemote(KnownLogs.Parse(Server("2026-01-01")));
+                Assert.AreEqual(own, LogExplanations.Get(LogExplanations.Match(condition, "", LogLevel.Warning)).Title);
+                LogExplanations.SetRemote(KnownLogs.Parse(Server("2099-01-01")));
+                Assert.AreEqual("From the server", LogExplanations.Get(LogExplanations.Match(condition, "", LogLevel.Warning)).Title,
+                    "A newer server copy (or a translation of the same text) replaces it.");
+            }
+            finally
+            {
+                LogExplanations.SetRemote(null);
+            }
+        }
+
+        [Test]
+        public void NoExplanationNamesTheFormerXRayGizmosPackage()
+        {
+            var own = KnownLogs.Load().ToList();
+            Assert.Greater(own.Count, 300, "The Logger's own list was read.");
+            foreach (var entry in own)
+            {
+                foreach (string text in new[] { entry.Title, entry.Summary }.Concat(entry.Fixes))
+                {
+                    StringAssert.DoesNotContain("XRay Gizmos", text, entry.Id + ": the avatar gizmos are part of Orbiters Toolkit now.");
+                }
+            }
         }
 
         [Test]

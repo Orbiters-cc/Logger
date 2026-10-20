@@ -112,6 +112,16 @@ namespace Orbiters.Logger.Editor.Tests
             Assert.AreEqual("Unity", store.SourceOf(engine).Name);
             Assert.AreEqual("Compiler", store.SourceOf(store.MessageAt(compile)).Name);
             Assert.AreEqual(store.SourceOf(native).Id, store.SourceOf(assets).Id, "VRCFury in Assets and as a tag are one source");
+
+            // Orbiters tools without a source file in the stack (or without a stack): by namespace, class prefix and tag.
+            int mixerTag = store.Intern("[Mixer] Rest-pose edit kept", string.Empty, LogVariant.Log);
+            int mixer = store.Intern("mixer", "UnityEngine.Debug:LogWarning (object)\nOrbiters.Mixer.Editor.MixerSession:Commit ()\n", LogVariant.Warning);
+            int refit = store.Intern("refit", "UnityEngine.Debug:LogWarning (object)\nOrbiters.ReFit.Editor.ReFitEngine:Run ()\n", LogVariant.Warning);
+            int mcbClass = store.Intern("mcb", "UnityEngine.Debug:LogWarning (object)\nMCBUtils:CopyFile (string,string)\n", LogVariant.Warning);
+            Assert.AreEqual("Mixer", store.SourceOf(mixerTag).Name);
+            Assert.AreEqual("Mixer", store.SourceOf(mixer).Name);
+            Assert.AreEqual("ReFit", store.SourceOf(refit).Name);
+            Assert.AreEqual("MCB", store.SourceOf(mcbClass).Name);
         }
 
         [Test]

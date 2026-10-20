@@ -88,7 +88,9 @@ namespace Orbiters.Logger.Editor
             ("nadena.dev.ndmf", "NDMF"), ("Thry", "Poiyomi"), ("lilToon", "lilToon"), ("UdonSharp", "UdonSharp"),
             ("BlackStartX.GestureManager", "Gesture Manager"), ("Anatawa12.AvatarOptimizer", "Avatar Optimizer"),
             ("Orbiters.MyAvatar", "My Avatar"), ("Orbiters.Toolkit", "Orbiters Toolkit"), ("Orbiters.UnitGit", "Unit Git"),
-            ("Orbiters.Logger", "Logger"), ("MCPForUnity", "MCP for Unity"), ("TMPro", "TextMesh Pro"),
+            ("Orbiters.ReFit", "ReFit"), ("Orbiters.Mixer", "Mixer"), ("Orbiters.Logger", "Logger"),
+            // MCB's code has no namespace of its own: its classes start with MCB (MCBLogger, MCBEditor, MCBUtils…).
+            ("MCB", "MCB"), ("MCPForUnity", "MCP for Unity"), ("TMPro", "TextMesh Pro"),
         };
 
         private static readonly (string tag, string name)[] Tags =
@@ -96,7 +98,7 @@ namespace Orbiters.Logger.Editor
             ("[VRCFury", "VRCFury"), ("[Modular Avatar", "Modular Avatar"), ("[MA]", "Modular Avatar"), ("[NDMF", "NDMF"),
             ("[UdonSharp", "UdonSharp"), ("[Poiyomi", "Poiyomi"), ("[Thry", "Poiyomi"), ("[lilToon", "lilToon"),
             ("[Gesture Manager", "Gesture Manager"), ("[VRCSDK", "VRChat SDK"), ("[VRC", "VRChat SDK"), ("[AAO", "Avatar Optimizer"),
-            ("[MCB", "MCB"), ("[My Avatar", "My Avatar"), ("[Unit Git", "Unit Git"), ("[ReFit", "ReFit"),
+            ("[MCB", "MCB"), ("[My Avatar", "My Avatar"), ("[Unit Git", "Unit Git"), ("[ReFit", "ReFit"), ("[Mixer", "Mixer"),
             ("[Package Manager", "Package Manager"), ("[Licensing", "Unity"), ("[Physics.PhysX", "Unity"),
             ("[Worker", "Asset import"), ("MCP-FOR-UNITY", "MCP for Unity"),
         };

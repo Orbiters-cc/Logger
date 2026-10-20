@@ -183,6 +183,7 @@
     },
     {
       "id": "vrcfury.largest-renderer",
+      "updated": "2026-10-19",
       "needle": "Largest renderer is ",
       "pattern": "^Largest renderer is (?<renderer>.+?) with linear size of (?<size>[0-9.]+)",
       "levels": [
@@ -2703,6 +2704,7 @@
     },
     {
       "id": "refit.tests.skip",
+      "updated": "2026-10-19",
       "needle": "[ReFit Tests] SKIP: ",
       "pattern": "^\\[ReFit Tests\\] SKIP: (?<test>.+?): (?<reason>[^\\r\\n]+)",
       "severity": "info",
@@ -3409,6 +3411,7 @@
     },
     {
       "id": "unity.tls-allocator",
+      "updated": "2026-10-19",
       "needle": "has unfreed allocations",
       "severity": "harmless",
       "source": "Unity",
@@ -3421,6 +3424,7 @@
     },
     {
       "id": "unity.tls-allocation-list",
+      "updated": "2026-10-19",
       "needle": "Allocation of ",
       "pattern": "^Allocation of \\d+ bytes at (0x)?[0-9A-Fa-f]+$",
       "severity": "harmless",
