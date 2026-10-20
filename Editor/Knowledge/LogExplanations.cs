@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace Orbiters.Logger.Editor
 {
@@ -54,17 +55,34 @@ namespace Orbiters.Logger.Editor
         public string LinkLabel { get; set; }
 
         /// <summary>
+        /// <see cref="Link"/> when it opens a web page (https, or http on this computer for a local server), else null: a
+        /// server, an edited cache file or a package can't make "Learn more" open a file or another program.
+        /// </summary>
+        internal string WebLink =>
+            Uri.TryCreate(Link, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)
+                ? uri.AbsoluteUri
+                : null;
+
+        /// <summary>
         /// When the text last changed (yyyy-MM-dd), empty when unknown. The Orbiters server's copy of an entry replaces the
         /// Logger's own only when it is at least as new: a server not yet given a release's texts never brings back older
         /// advice.
         /// </summary>
         internal string Updated = string.Empty;
 
+        /// <summary>How long one match may take (tests shorten it).</summary>
+        internal static TimeSpan MatchTimeout = TimeSpan.FromMilliseconds(100);
+
+        // A pattern that keeps timing out is given up: each try holds the main thread for the whole timeout, and behind a
+        // common needle it would be tried on most logs, again after every download of the list.
+        private const int MaxTimeouts = 3;
+
         internal ExplanationOrigin Origin;
         private Regex regex;
         private bool patternFailed;
+        private int timeouts;
 
-        /// <summary>The compiled pattern, built at its first use; null without a pattern or when it doesn't compile.</summary>
+        /// <summary>The compiled pattern, built at its first use; null without a pattern, when it doesn't compile or kept timing out.</summary>
         internal Regex Regex
         {
             get
@@ -73,7 +91,7 @@ namespace Orbiters.Logger.Editor
                 {
                     try
                     {
-                        regex = new Regex(Pattern, RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+                        regex = new Regex(Pattern, RegexOptions.CultureInvariant, MatchTimeout);
                     }
                     catch (ArgumentException)
                     {
@@ -85,8 +103,36 @@ namespace Orbiters.Logger.Editor
             }
         }
 
-        /// <summary>A pattern that doesn't compile: the entry never matches.</summary>
+        /// <summary>A pattern that doesn't compile or kept timing out: the entry never matches.</summary>
         internal bool Broken => !string.IsNullOrEmpty(Pattern) && Regex == null;
+
+        /// <summary>
+        /// The pattern's match in the first 4000 characters of <paramref name="text"/>; a failed match without a usable
+        /// pattern or when it took too long.
+        /// </summary>
+        internal Match MatchIn(string text)
+        {
+            var compiled = Regex;
+            if (compiled == null)
+            {
+                return Match.Empty;
+            }
+
+            try
+            {
+                return compiled.Match(text.Length > 4000 ? text.Substring(0, 4000) : text);
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                if (Interlocked.Increment(ref timeouts) >= MaxTimeouts)
+                {
+                    patternFailed = true;
+                    regex = null;
+                }
+
+                return Match.Empty;
+            }
+        }
 
         internal bool LevelMatches(LogLevel level)
         {
@@ -130,6 +176,8 @@ namespace Orbiters.Logger.Editor
         private static List<LogExplanation> local;
         private static List<LogExplanation> remote = new List<LogExplanation>();
         private static readonly object gate = new object();
+        // {name} in a text; names that start with a digit are numbered groups, left alone.
+        private static readonly Regex Placeholder = new Regex(@"\{([^{}\d\s][^{}\s]*)\}", RegexOptions.CultureInvariant);
 
         /// <summary>Bumps when explanations change: cached matches are looked up again.</summary>
         internal static int Version { get; private set; }
@@ -228,13 +276,9 @@ namespace Orbiters.Logger.Editor
                         continue;
                     }
 
-                    if (!string.IsNullOrEmpty(entry.Pattern))
+                    if (!string.IsNullOrEmpty(entry.Pattern) && !entry.MatchIn(condition).Success)
                     {
-                        var regex = entry.Regex;
-                        if (regex == null || !SafeMatch(regex, condition).Success)
-                        {
-                            continue;
-                        }
+                        continue;
                     }
 
                     return i;
@@ -254,26 +298,27 @@ namespace Orbiters.Logger.Editor
             }
 
             var regex = entry.Regex;
-            Match match = regex != null ? SafeMatch(regex, condition ?? string.Empty) : null;
+            var match = regex != null ? entry.MatchIn(condition ?? string.Empty) : null;
+            // In one pass: a value holding "{size}" stays as it is. A group the message left empty, or a message the
+            // pattern doesn't match, shows "…".
             string Fill(string text)
             {
-                if (string.IsNullOrEmpty(text) || match == null || !match.Success || text.IndexOf('{') < 0)
+                if (string.IsNullOrEmpty(text) || regex == null || text.IndexOf('{') < 0)
                 {
                     return text ?? string.Empty;
                 }
 
-                foreach (string name in regex.GetGroupNames())
+                return Placeholder.Replace(text, placeholder =>
                 {
-                    if (char.IsDigit(name[0]))
+                    string name = placeholder.Groups[1].Value;
+                    if (regex.GroupNumberFromName(name) < 0)
                     {
-                        continue;
+                        return placeholder.Value;
                     }
 
-                    var group = match.Groups[name];
-                    text = text.Replace("{" + name + "}", group.Success && group.Value.Length > 0 ? group.Value : "…");
-                }
-
-                return text;
+                    var group = match.Success ? match.Groups[name] : null;
+                    return group != null && group.Success && group.Value.Length > 0 ? group.Value : "…";
+                });
             }
 
             var fixes = new string[entry.Fixes?.Length ?? 0];
@@ -283,18 +328,6 @@ namespace Orbiters.Logger.Editor
             }
 
             return new ExplainedLog { Explanation = entry, Title = Fill(entry.Title), Summary = Fill(entry.Summary), Fixes = fixes };
-        }
-
-        private static Match SafeMatch(Regex regex, string text)
-        {
-            try
-            {
-                return regex.Match(text.Length > 4000 ? text.Substring(0, 4000) : text);
-            }
-            catch (RegexMatchTimeoutException)
-            {
-                return System.Text.RegularExpressions.Match.Empty;
-            }
         }
 
         private static void EnsureLoaded()

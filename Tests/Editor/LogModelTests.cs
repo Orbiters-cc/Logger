@@ -118,10 +118,14 @@ namespace Orbiters.Logger.Editor.Tests
             int mixer = store.Intern("mixer", "UnityEngine.Debug:LogWarning (object)\nOrbiters.Mixer.Editor.MixerSession:Commit ()\n", LogVariant.Warning);
             int refit = store.Intern("refit", "UnityEngine.Debug:LogWarning (object)\nOrbiters.ReFit.Editor.ReFitEngine:Run ()\n", LogVariant.Warning);
             int mcbClass = store.Intern("mcb", "UnityEngine.Debug:LogWarning (object)\nMCBUtils:CopyFile (string,string)\n", LogVariant.Warning);
+            int lookalike = store.Intern("lookalike", "UnityEngine.Debug:LogWarning (object)\nMCBuildHelper:Run ()\n", LogVariant.Warning);
             Assert.AreEqual("Mixer", store.SourceOf(mixerTag).Name);
             Assert.AreEqual("Mixer", store.SourceOf(mixer).Name);
             Assert.AreEqual("ReFit", store.SourceOf(refit).Name);
             Assert.AreEqual("MCB", store.SourceOf(mcbClass).Name);
+            Assert.AreNotEqual("MCB", store.SourceOf(lookalike).Name, "a class whose name only starts with the letters MCB");
+            Assert.AreEqual("MCB", SourceCatalog.NameForNamespace("MCBEditor"));
+            Assert.IsNull(SourceCatalog.NameForNamespace("MCBridge.Client"));
         }
 
         [Test]

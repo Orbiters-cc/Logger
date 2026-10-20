@@ -25,6 +25,26 @@ namespace Orbiters.Logger.Editor.Tests
         }
 
         [Test]
+        public void KnownTitlesAreMaskedLikeTheirMessage()
+        {
+            var entries = KnownLogs.Parse(@"{ ""explanations"": [
+                { ""id"": ""tests.known-secret"", ""needle"": ""ZZ-known"", ""pattern"": ""ZZ-known token=(?<value>\\S+) for (?<path>.+)"", ""severity"": ""problem"",
+                  ""source"": ""Tests"", ""title"": ""Rejected {value} for {path}"" } ] }");
+            var store = new LogStore();
+            store.Add(1000, @"ZZ-known token=abcdef123456 for C:\Users\Jane Doe\Desktop\a.png", string.Empty, LogVariant.Error);
+            try
+            {
+                LogExplanations.SetRemote(entries);
+                var group = LogReport.Digest(store, Privacy()).Groups.Single();
+                Assert.AreEqual(@"Rejected [masked] for %USERPROFILE%\Desktop\a.png", group.Known, "the placeholders come from the masked text");
+            }
+            finally
+            {
+                LogExplanations.SetRemote(null);
+            }
+        }
+
+        [Test]
         public void MasksTokensAndPasswords()
         {
             var privacy = Privacy();

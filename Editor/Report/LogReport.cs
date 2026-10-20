@@ -47,6 +47,7 @@ namespace Orbiters.Logger.Editor
         internal const int MaxWarningGroups = 12;
         internal const int MaxInfoGroups = 3;
         private const int MaxText = 1500;
+        private const int MaxKnown = 200;
         private const int MaxStack = 2000;
         private const int MaxStackLines = 14;
         private const long EditorLogTail = 32L * 1024 * 1024;
@@ -157,10 +158,13 @@ namespace Orbiters.Logger.Editor
                 group.Id = "g" + i;
                 // Only the chosen ones are read and masked; masked before cutting, so a secret cut in half can't leak.
                 string text = store.Texts.Plain(group.TextId);
+                string masked = privacy.Mask(text);
                 string stack = TopOfStack(store.Texts.Plain(group.StackId));
                 int explanation = LogExplanations.Match(text, stack, group.Level);
-                group.Known = explanation >= 0 ? LogExplanations.Explain(explanation, text)?.Title : null;
-                group.Text = privacy.MaskAndClip(text, MaxText);
+                // The title's placeholders are filled from the masked text, then the title is masked as a whole too.
+                string known = explanation >= 0 ? LogExplanations.Explain(explanation, masked)?.Title : null;
+                group.Known = known != null ? privacy.MaskAndClip(known, MaxKnown) : null;
+                group.Text = Clip(masked, MaxText);
                 group.Stack = privacy.MaskAndClip(stack, MaxStack);
                 group.Source = privacy.Mask(group.Source);
                 digest.Groups.Add(group);

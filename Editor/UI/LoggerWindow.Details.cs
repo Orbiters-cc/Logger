@@ -462,16 +462,18 @@ namespace Orbiters.Logger.Editor
             bulb.AddToClassList("lg-explain__icon");
             head.Add(bulb);
             head.Add(LoggerUi.Text(SeverityLabel(entry.Severity), "lg-explain__severity"));
+            // The entry's texts are shown as written: they come from the server and their placeholders from the log, where
+            // a name holding <size=0> must not hide or restyle anything.
             if (!string.IsNullOrEmpty(entry.Source))
             {
-                head.Add(LoggerUi.Text(entry.Source, "lg-explain__source"));
+                head.Add(LoggerUi.Plain(entry.Source, "lg-explain__source"));
             }
 
             card.Add(head);
-            card.Add(LoggerUi.Text(explained.Title, "lg-explain__title"));
+            card.Add(LoggerUi.Plain(explained.Title, "lg-explain__title"));
             if (!string.IsNullOrEmpty(explained.Summary))
             {
-                card.Add(LoggerUi.Text(explained.Summary, "lg-explain__summary"));
+                card.Add(LoggerUi.Plain(explained.Summary, "lg-explain__summary"));
             }
 
             if (explained.Fixes.Length > 0)
@@ -481,15 +483,16 @@ namespace Orbiters.Logger.Editor
                 {
                     var step = LoggerUi.Box("lg-explain__step");
                     step.Add(LoggerUi.Text((i + 1).ToString(), "lg-explain__step-number"));
-                    step.Add(LoggerUi.Text(explained.Fixes[i], "lg-explain__step-text"));
+                    step.Add(LoggerUi.Plain(explained.Fixes[i], "lg-explain__step-text"));
                     card.Add(step);
                 }
             }
 
-            if (!string.IsNullOrEmpty(entry.Link))
+            string url = entry.WebLink;
+            if (url != null)
             {
-                string url = entry.Link;
-                card.Add(LoggerUi.Pill(string.IsNullOrEmpty(entry.LinkLabel) ? "Learn more" : entry.LinkLabel, () => Application.OpenURL(url), "ghost", LoggerGlyph.External));
+                card.Add(LoggerUi.Pill(string.IsNullOrEmpty(entry.LinkLabel) ? "Learn more" : RichText.Literal(entry.LinkLabel), () => Application.OpenURL(url), "ghost",
+                    LoggerGlyph.External));
             }
 
             return card;

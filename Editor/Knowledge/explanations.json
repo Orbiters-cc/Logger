@@ -1268,7 +1268,7 @@
       "severity": "harmless",
       "source": "Orbiters Toolkit",
       "title": "ReFit: {body} shrinks under {clothing} in the upload",
-      "summary": "When {clothing} was fitted, ReFit noted the {count} vertices of {body} that would show through it and how far to pull them in. The upload gets that as a blendshape of {body}: on while the clothing is worn and, when the clothing has menu toggles, following them ({how}). Only the build copy changes.",
+      "summary": "When {clothing} was fitted, ReFit noted the {count} vertices of {body} that would show through it and how far to pull them in. The upload gets that as a blendshape of {body} that follows the clothing: on while it shows, off while it is hidden, toggles included ({how}). Only the build copy changes.",
       "fixes": [
         "Nothing to do.",
         "If the body shows through or looks dented, fit the clothing again with ReFit (its record keeps the shrink), or turn the body shrink off in the fit's options."
@@ -1278,7 +1278,7 @@
       "id": "toolkit.refit-kept-fits",
       "updated": "2026-10-20",
       "needle": "[Orbiters] ReFit: ",
-      "pattern": "^\\[Orbiters\\] ReFit: (?<clothing>.+?) offers (?<count>\\d+) fits in the menu \\((?<menu>[^)]+)\\)\\.",
+      "pattern": "^\\[Orbiters\\] ReFit: (?<clothing>.+?) offers (?<count>\\d+) fits in the menu \\((?<menu>.+)\\)\\.",
       "levels": [
         "log"
       ],
@@ -2137,7 +2137,7 @@
       "id": "mcb.file-kept-changed",
       "updated": "2026-10-20",
       "needle": "[FileManager] Kept '",
-      "pattern": "^\\[FileManager\\] Kept '(?<path>[^']+)': this version ships a different copy",
+      "pattern": "^\\[FileManager\\] Kept '(?<path>.+?)': this version ships a different copy",
       "levels": [
         "warning"
       ],
@@ -4346,7 +4346,9 @@
     },
     {
       "id": "mixer.autosave-unreadable",
+      "updated": "2026-10-20",
       "needle": "[Mixer] The autosave of '",
+      "pattern": "^\\[Mixer\\] The autosave of '.+' could not be read: ",
       "severity": "warning",
       "source": "Mixer",
       "title": "Mixer could not restore an edit in progress",
@@ -4407,7 +4409,7 @@
       "id": "mixer.commit-new-file",
       "updated": "2026-10-20",
       "needle": "could not be updated in place: the commit of ",
-      "pattern": "^\\[Mixer\\] '(?<path>[^']+)' could not be updated in place: the commit of (?<mesh>.+?) goes to a file of its own\\.",
+      "pattern": "^\\[Mixer\\] '(?<path>.+?)' could not be updated in place: the commit of (?<mesh>.+?) goes to a file of its own\\.",
       "levels": [
         "warning"
       ],
@@ -4448,7 +4450,7 @@
       ],
       "severity": "harmless",
       "source": "Unity Test Framework",
-      "title": "A test turned error checking {state}",
+      "title": "A test set LogAssert.ignoreFailingMessages to {state}",
       "summary": "Unity's test framework notes when a test sets LogAssert.ignoreFailingMessages: while it is true, errors logged during that test don't fail it. It comes from a test that expects errors from outside its own code.",
       "fixes": [
         "Nothing to do."

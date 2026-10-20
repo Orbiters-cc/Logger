@@ -82,6 +82,7 @@ namespace Orbiters.Logger.Editor
         };
 
         // Namespaces of code without a source file (precompiled DLLs), and [Tag] prefixes of messages without a stack.
+        // A namespace counts up to a word: "MCB" is MCBEditor and MCBUtils, not MCBuildHelper.
         private static readonly (string prefix, string name)[] Namespaces =
         {
             ("VRC.", "VRChat SDK"), ("VRCSDK", "VRChat SDK"), ("VF.", "VRCFury"), ("nadena.dev.modular_avatar", "Modular Avatar"),
@@ -313,15 +314,8 @@ namespace Orbiters.Logger.Editor
                 return -1;
             }
 
-            foreach (var (prefix, name) in Namespaces)
-            {
-                if (method.StartsWith(prefix, StringComparison.Ordinal))
-                {
-                    return Get(name);
-                }
-            }
-
-            return StackTraces.IsEngine(method) ? Unity : -1;
+            string name = NameForNamespace(method);
+            return name != null ? Get(name) : StackTraces.IsEngine(method) ? Unity : -1;
         }
 
         private int FromTag(string condition)
@@ -397,7 +391,7 @@ namespace Orbiters.Logger.Editor
 
             foreach (var (prefix, name) in Namespaces)
             {
-                if (typeName.StartsWith(prefix, StringComparison.Ordinal))
+                if (typeName.StartsWith(prefix, StringComparison.Ordinal) && (typeName.Length == prefix.Length || !char.IsLower(typeName[prefix.Length])))
                 {
                     return name;
                 }

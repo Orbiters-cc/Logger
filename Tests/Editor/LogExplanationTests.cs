@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using NUnit.Framework;
 
@@ -157,6 +158,103 @@ namespace Orbiters.Logger.Editor.Tests
             {
                 LogExplanations.SetRemote(entries);
                 Assert.IsNull(IdOf("ZZ-invalid here"));
+            }
+            finally
+            {
+                LogExplanations.SetRemote(null);
+            }
+        }
+
+        [Test]
+        public void PlaceholdersAreFilledInOnePass()
+        {
+            var entries = KnownLogs.Parse(@"{ ""explanations"": [
+                { ""id"": ""tests.fill"", ""needle"": ""ZZ-fill"", ""pattern"": ""ZZ-fill (?<a>\\S+) (?<b>\\S+)"", ""severity"": ""info"", ""source"": ""Tests"",
+                  ""title"": ""{a} and {b}, not {c}"" } ] }");
+            try
+            {
+                LogExplanations.SetRemote(entries);
+                int index = LogExplanations.Match("ZZ-fill {b} x", "", LogLevel.Error);
+                Assert.AreEqual("{b} and x, not {c}", LogExplanations.Explain(index, "ZZ-fill {b} x").Title, "a value holding a placeholder stays as it is");
+                Assert.AreEqual("\u2026 and \u2026, not {c}", LogExplanations.Explain(index, "ZZ-other").Title, "a text the pattern doesn't match");
+            }
+            finally
+            {
+                LogExplanations.SetRemote(null);
+            }
+        }
+
+        [Test]
+        public void APatternThatKeepsTimingOutIsGivenUp()
+        {
+            var entries = KnownLogs.Parse(@"{ ""explanations"": [
+                { ""id"": ""tests.slow"", ""needle"": ""ZZ-slow"", ""pattern"": ""ZZ-slow (a+)+$"", ""severity"": ""info"", ""source"": ""Tests"", ""title"": ""Slow"" } ] }");
+            var slow = entries[0];
+            string message = "ZZ-slow " + new string('a', 30) + "!";
+            var timeout = LogExplanation.MatchTimeout;
+            try
+            {
+                // The pattern is compiled at its first use, with the short timeout.
+                LogExplanation.MatchTimeout = TimeSpan.FromMilliseconds(1);
+                LogExplanations.SetRemote(entries);
+                for (int i = 0; i < 3; i++)
+                {
+                    Assert.IsNull(IdOf(message));
+                }
+
+                Assert.IsTrue(slow.Broken, "After three timeouts the pattern is no longer tried.");
+                Assert.IsNull(IdOf(message));
+            }
+            finally
+            {
+                LogExplanation.MatchTimeout = timeout;
+                LogExplanations.SetRemote(null);
+            }
+        }
+
+        [Test]
+        public void OnlyWebPagesOpen()
+        {
+            string Link(string link) => new LogExplanation("tests.link", "ZZ-link", "Link") { Link = link }.WebLink;
+            Assert.AreEqual("https://orbiters.cc/docs", Link("https://orbiters.cc/docs"));
+            Assert.AreEqual("http://localhost:4100/docs", Link("http://localhost:4100/docs"));
+            Assert.IsNull(Link("http://example.com/"), "plain http only for a server on this computer");
+            Assert.IsNull(Link("file:///C:/Windows/System32/calc.exe"));
+            Assert.IsNull(Link(@"C:\Windows\System32\calc.exe"));
+            Assert.IsNull(Link("steam://run/438100"));
+            Assert.IsNull(Link("javascript:alert(1)"));
+            Assert.IsNull(Link(null));
+        }
+
+        [Test]
+        public void NamesWithParenthesesAndApostrophesFillThePlaceholders()
+        {
+            var ids = new[]
+            {
+                "toolkit.refit-kept-fits", "toolkit.refit-body-shrink", "mcb.file-kept-changed", "mixer.commit-new-file", "mixer.autosave-unreadable",
+                "unity.test-ignore-failing-messages"
+            };
+            // The Logger's own texts as the server's too: an older server copy doesn't decide.
+            var own = KnownLogs.Load().Where(e => ids.Contains(e.Id)).ToList();
+            Assert.AreEqual(ids.Length, own.Count);
+            ExplainedLog Explained(string message, LogLevel level) => LogExplanations.Explain(LogExplanations.Match(message, "", level), message);
+            try
+            {
+                LogExplanations.SetRemote(own);
+                var kept = Explained("[Orbiters] ReFit: Hoodie (1) offers 3 fits in the menu (Fits/Hoodie (1)).", LogLevel.Info);
+                Assert.AreEqual("ReFit: Hoodie (1) gets 3 fits in the menu", kept.Title);
+                StringAssert.Contains("a menu at Fits/Hoodie (1) switches", kept.Summary);
+                Assert.AreEqual("ReFit: Body shrinks under Hoodie (1) in the upload",
+                    Explained("[Orbiters] ReFit: Body shrinks under Hoodie (1) (120 vertices, off: the clothing starts hidden and nothing shows it).", LogLevel.Info).Title);
+                Assert.AreEqual("MCB kept your copy of Assets/Bob's Avatar/Body.fbx",
+                    Explained("[FileManager] Kept 'Assets/Bob's Avatar/Body.fbx': this version ships a different copy, but the project's copy is not one MCB installed, so it may hold your changes.",
+                        LogLevel.Warning).Title);
+                Assert.AreEqual("Mixer saved Body (1)'s commit in a new file",
+                    Explained("[Mixer] 'Assets/Bob's/Body.asset' could not be updated in place: the commit of Body (1) goes to a file of its own.", LogLevel.Warning).Title);
+                Assert.AreEqual("mixer.autosave-unreadable", IdOf("[Mixer] The autosave of 'Body' could not be read: Unexpected end of file", level: LogLevel.Warning));
+                Assert.AreNotEqual("mixer.autosave-unreadable",
+                    IdOf("[Mixer] The autosave of 'Body' could not be written (Disk full): its edits are only in memory until the next autosave works.", level: LogLevel.Warning));
+                Assert.AreEqual("A test set LogAssert.ignoreFailingMessages to true", Explained("\nIgnoreFailingMessages:true", LogLevel.Info).Title);
             }
             finally
             {

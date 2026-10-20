@@ -14,6 +14,11 @@
 - Explanations for Mixer's messages: an autosave or a mesh's vertex groups that could not be read, the Mixer Hierarchy unable to take Unity's place, the Blender link's port refused, a renderer's own mesh put back after an Undo.
 - Sources: Mixer's and ReFit's messages are theirs when the stack trace has no source file (by their namespace), MCB's by its classes' `MCB` prefix, and a `[Mixer]` message without a stack trace is Mixer's (they went to Unity or Project).
 - Explanations: an entry can say when its text last changed (`updated`); the Orbiters server's copy of it replaces the Logger's own only when it is as new. A server not yet given a release's texts no longer brings back older advice after a download (the avatar gizmos' and ReFit's skipped checks named XRay Gizmos again, and the temporary memory notices lost the "Script reloads by package" cause).
+- **Get help**: the README's "Known:" lines are masked like their message (their names and paths came from the unmasked log).
+- Explanation cards show their texts as written: a name with rich text tags (`<size=0>`, `<color>`) no longer hides or restyles them, and a name holding `{…}` is no longer filled in. **Learn more** opens web pages only (https, or http on this computer).
+- An explanation whose pattern keeps timing out is given up after three tries, instead of stalling the window on every message it is tried on.
+- Sources: a class is MCB's when `MCB` is followed by a capital (MCBEditor, MCBUtils): MCBuildHelper or MCBridge no longer are.
+- Explanations: ReFit's kept fits, MCB's kept copies and Mixer's commits to a new file fill in names with parentheses or apostrophes ("Hoodie (1)"); IgnoreFailingMessages' title says what the test set; ReFit's body shrink no longer says it is on when the clothing starts hidden; Mixer's autosave read failure no longer explains its write failures.
 
 ## 0.2.6 — 2026-10-13
 
