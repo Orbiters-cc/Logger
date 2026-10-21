@@ -1,6 +1,6 @@
 # Logger
 
-## 0.2.7 — 2026-10-19
+## 0.2.7 — 2026-10-21
 
 - Mixer's source chips carry its logo, as MCB's, My Avatar's, ReFit's and the Logger's do.
 - 19 more explanations: Unity's "Bones do not match bindpose", "Main Object Name … does not match filename", XR Plug-in
